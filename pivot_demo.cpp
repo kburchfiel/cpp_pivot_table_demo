@@ -25,16 +25,12 @@
 // 2. Convert the pivot-table-generation script into a function
 // and move it into a separate file. (Have it return the header
 // rows so that they can be applied later on.)
+// 3. Report the time each function takes withinh the terminal.
 
 #include "simple_csv_import_export.h"
-#include <algorithm>
 #include <array>
-#include <chrono>
 #include <cstdlib>
 #include <ctime>
-#include <filesystem>
-#include <fstream>
-#include <functional>
 #include <iostream>
 #include <map>
 #include <string>
@@ -176,7 +172,7 @@ int main() {
     }
   }
 
-  std::cout << "Number of keys within pivot_table:" << pivot_table.size() << "\n";
+  std::cout << "Number of keys within pivot_table: " << pivot_table.size() << "\n";
 
   // Adding in mean columns now that sums and counts have been calculated:
 
