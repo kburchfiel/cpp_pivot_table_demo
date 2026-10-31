@@ -132,8 +132,8 @@ std::vector<std::string>> {mapped_rowvec, col_names};
 }
 
 void vmss_to_csv(std::string file_path,
-std::vector<std::map<std::string, std::string>> vmss,
-std::vector<std::string> col_names)
+std::vector<std::map<std::string, std::string>> const &vmss,
+std::vector<std::string> const &col_names)
 {
 /* col_names, which will often get initialized from
 the return value of csv_to_vmss (and thus won't need to be

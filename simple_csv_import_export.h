@@ -18,5 +18,5 @@ std::vector<std::string>>
 csv_to_vmss(std::string file_path, char delimiter = ',');
 
 void vmss_to_csv(std::string file_path,
-std::vector<std::map<std::string, std::string>> vmss,
-std::vector<std::string> col_names);
+std::vector<std::map<std::string, std::string>> const &vmss,
+std::vector<std::string> const& col_names);

@@ -7,9 +7,9 @@
   std::pair<std::map<std::string, std::map<std::string, 
   std::variant<double, long>>>, std::vector<
   std::string>> vmss_pivot_table(
-  std::vector<std::map<std::string, std::string>> vmss_data, 
-  std::vector<std::string> index_fields,
-    std::vector<std::string> value_fields, 
+  std::vector<std::map<std::string, std::string>> const &vmss_data, 
+  std::vector<std::string> const &index_fields,
+    std::vector<std::string> const &value_fields, 
     char pivot_index_separator) {
 
 
@@ -145,3 +145,57 @@
   std::variant<double, long>>>, std::vector<
   std::string>> {pivot_table, header_row};
     }
+
+
+
+    std::vector<std::map<std::string, 
+    std::string>> pivot_table_to_vmss(std::map<std::string, 
+    std::map<std::string, std::variant<double, long>>> const &pivot_table, 
+    std::vector<std::string> const &header_row) {
+        /* This function converts the output of vmss_pivot_table()
+        to a vector of string/string maps, thus allowing it to be
+        passed as input to the vmss_to_csv function within
+        simple_csv_import_export.h. It takes two inputs:
+        the pivot table to convert, and the header row for that table.
+        (Both of these files can be retrieved from the output of
+        vmss_to_csv.) 
+        
+        Note: Because this function does not make any modifications
+        to header_row, it will not return it. (Instead, it can be 
+        retrieved from whatever code is calling this function.)*/
+
+
+
+  std::vector<std::map<std::string, std::string>> pivot_table_vmss;
+  // vmss is short for "vector of maps of strings & strings"
+
+  for (auto const &[pivot_index, value_map] : pivot_table) {
+    std::map<std::string, std::string> mss{};
+    // Adding the pivot index as the first entry for the map:
+    mss[header_row[0]] = pivot_index; // header_row[0] contains the
+    // name of the index values.
+    // Iterating through the header row columns following the pivot
+    // index in order to add those columns' values for the current row
+    // to the map:
+    for (auto const &[header_field, row_value] :
+         value_map) { // Sum columns should be retrieved as doubles, whereas
+                      // count columns should be retrieved as longs.
+
+      if (std::holds_alternative<double>(row_value)) {
+        mss[header_field] = std::to_string(std::get<double>(row_value));
+      }
+
+      else if (std::holds_alternative<long>(row_value)) {
+        mss[header_field] = std::to_string(std::get<long>(row_value));
+      }
+
+      // It would be ideal to raise an error here if neither of the previous
+      // if statements is true.
+    }
+
+    pivot_table_vmss.push_back(mss);
+  }
+  
+  return pivot_table_vmss;
+
+}

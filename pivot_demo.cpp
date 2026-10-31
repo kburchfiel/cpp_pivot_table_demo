@@ -22,10 +22,13 @@
 // To do:
 
 // 1. Add additional documentation
-// 2. Convert the pivot-table-generation script into a function
-// and move it into a separate file. (Have it return the header
-// rows so that they can be applied later on.)
-// 3. Report the time each function takes withinh the terminal.
+// 2. Report the time each function takes to run within this file.
+// 3. Create a CSV-import function that returns data as vectors
+// of string/variant maps. (Add integers, longs, doubles, floats,
+// and strings as variant options.) Next, create a pivot-table
+// function that can process this data. Finally, compare the time
+// these functions require to run (on the same dataset) to your
+// existing CSV-import and pivot-table functions.
 
 #include "simple_csv_import_export.h"
 #include "pivot_functions.h"
@@ -47,15 +50,18 @@ int main() {
 
   std::pair<std::vector<std::map<std::string, std::string>>,
             std::vector<std::string>>
-      csv_data_and_header = csv_to_vmss(
-        //   "T_T100_SEGMENT_ALL_CARRIER_2024_selected_cols_truncated.csv"
-          "T_T100_SEGMENT_ALL_CARRIER_2024_selected_cols.csv"
+      const csv_data_and_header = csv_to_vmss(
+        // The following, commented-out file is useful for testing
+        // and debugging purposes, as it's much smaller (and thus won't
+        // take as long to process).
+        // "T_T100_SEGMENT_ALL_CARRIER_2024_selected_cols_truncated.csv"
+        "T_T100_SEGMENT_ALL_CARRIER_2024_selected_cols.csv"
         );
     
 
-  std::vector<std::map<std::string, std::string>> csv_data =
+  std::vector<std::map<std::string, std::string>> const csv_data =
       csv_data_and_header.first;
-  std::vector<std::string> col_names = csv_data_and_header.second;
+  std::vector<std::string> const col_names = csv_data_and_header.second;
 
   std::cout << "Length of csv_data: " << csv_data.size() << "\n";
 
@@ -67,7 +73,7 @@ int main() {
 
   std::pair<std::map<std::string, std::map<std::string, 
   std::variant<double, long>>>, std::vector<
-  std::string>> pivot_and_header = vmss_pivot_table(
+  std::string>> const pivot_and_header = vmss_pivot_table(
   csv_data, index_fields, value_fields);
 
 std::map<std::string, std::map<std::string, 
@@ -112,42 +118,15 @@ std::map<std::string, std::map<std::string,
   // data into a vector of string/string maps, which is what my CSV-export
   // function accepts as input, together with a list of header fields.)
 
-  // (Alternatively, I could have created a function that would accept
-  // a vector of vectors of strings, which would work fine here also
-  // provided that I make sure to add values to each vector in the
-  // correct order.)
+  // (Alternatively, I could have created a CSV-export function that 
+  // would accept a vector of vectors of strings, which would work fine 
+  // here also provided that I make sure to add values to each vector 
+  // in the correct order.)
 
-  std::vector<std::map<std::string, std::string>> pivot_table_vmss;
-  // vmss is short for "vector of maps of strings & strings"
+  std::vector<std::map<std::string, 
+    std::string>> pivot_table_vmss = pivot_table_to_vmss(pivot_table,
+    header_row);
 
-  for (auto const &[pivot_index, value_map] : pivot_table) {
-    std::map<std::string, std::string> mss{};
-    // Adding the pivot index as the first entry for the map:
-    mss[header_row[0]] = pivot_index; // header_row[0] contains the
-    // name of the index values.
-    // Iterating through the header row columns following the pivot
-    // index in order to add those columns' values for the current row
-    // to the map:
-    for (auto const &[header_field, row_value] :
-         value_map) { // Sum columns should be retrieved as doubles, whereas
-                      // count columns should be retrieved as longs.
-
-      if (std::holds_alternative<double>(row_value)) {
-        mss[header_field] = std::to_string(std::get<double>(row_value));
-      }
-
-      // else if (header_field.substr(header_field.size()-8), 7) == "_double")
-      else if (std::holds_alternative<long>(row_value)) {
-        mss[header_field] = std::to_string(std::get<long>(row_value));
-      }
-
-      // It would be ideal to raise an error here if neither of the previous
-      // if statements is true.
-    }
-
-    pivot_table_vmss.push_back(mss);
-  }
-
-  vmss_to_csv("pivot_data.csv", csv_data = pivot_table_vmss,
-              col_names = header_row);
+  vmss_to_csv("pivot_data.csv", pivot_table_vmss,
+              header_row);
 }
