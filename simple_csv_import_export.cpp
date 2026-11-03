@@ -116,7 +116,8 @@ well (as long, again, as there are no tabs within your cell values.)
       // This approach is based on the example code found at
       // https://en.cppreference.com/w/cpp/string/basic_string/getline.
 
-      for (std::string column; getline(current_row, column, delimiter);) {
+      for (std::string column; getline(current_row, 
+        column, delimiter);) {
         mapped_row[col_names[field_index]] = column;
         field_index++; // Incrementing the index so that we can then
                        // move on to the next column
