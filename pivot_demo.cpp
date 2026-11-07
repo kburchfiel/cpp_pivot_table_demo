@@ -42,298 +42,19 @@ the DataFrame library and Vicent La's library)
 
 */
 
-#include "pivot_functions.h"
-#include "simple_csv_import_export.h"
 #include <cstdlib>
 #include <ctime>
 #include <iostream>
 #include <map>
-#include <set>
 #include <string>
-#include <valarray>
 #include <variant>
 #include <vector>
 
-struct Multi_Type_Table {
-
-  /*This struct is meant
-  to allow spreadsheet-type data with multiple fields
-  to get stored in memory, thus facilitating various
-  calculations.
-  Columns of data will get stored as maps,
-  with column names as keys and data values as
-  valarrays of various types.
-
-  Note: I had also considered storing spreadsheet data as
-  a map with strings as keys and variants as values.
-  (The variants would include valarrays for various
-  field types.) However, StackOverflow responses suggest
-  that variants might slow down various processes,
-  so I decided to go with a struct instead.
-
-  // Currently, the struct only supports four different types
-  // of field data, which
-  // may be either too few or too many for certain calculations.
-  // However, the struct can also be easily adapted to accommodate
-  // additional types.
-
-  */
-
-  // The following vector of fields allows us to keep track
-  // of the spreadsheet's column order (which can help export
-  // data with the same field order that its source file used.)
-
-  std::vector<std::string> field_order{};
-
-  long length = 0; // This should probably be made
-  // private so that users can't mess with it!
-
-  // I could also add a dictionary that maps each field to
-  // a given type, but since types can also be checked by
-  // determining the map (stf, intf, etc.) within which a given
-  // field serves as a key, this may not be necessary.
-
-  // String fields:
-  std::map<std::string, std::valarray<std::string>> stf{};
-  // Integer fields:
-  std::map<std::string, std::valarray<int>> intf{};
-  // Long fields:
-  std::map<std::string, std::valarray<long>> lf{};
-  // Double fields:
-  std::map<std::string, std::valarray<double>> df{};
-};
-
-struct Pivot_Row {
-
-  // This struct will hold pivot-table data for a given pivot index.
-  // I'm using separate maps for double- and long-typed data,
-  // though I could also have tried out a variant.
-
-  std::map<std::string, double> df{};
-  std::map<std::string, long> lf{};
-};
-
-Multi_Type_Table csv_to_mtt(std::string file_path,
-                            std::map<std::string, std::string> field_type_map,
-                            std::set<std::string> fields_to_import = {},
-                            char delimiter = ',') {
-  /* This function imports CSV-file data into an MTT object.
-
-  // field_type_map stores field names as keys and your desired
-  // field types as values. Any field not present within this
-  // dictionary is assumed to be a string.)
-  // The following field types are recognized by the function:
-  // 'string'; 'double'; 'int'; and 'long'.
-
-  fields_to_import: The fields from the CSV file that you would like
-  to import. If this vector is left blank, all fields will get imported.
+#include "pivot_functions.h"
+#include "simple_csv_import_export.h"
+#include "mtt.h"
 
 
-  // delimiter: The character used to separate fields within the
-  // original CSV file. The default ',' delimiter will often work fine
-  *unless* there are commas within the cell values themselves (in which case
-  you'll need to use a more capable library, such as
-  Vincent La's CSV parser--available at
-  https://github.com/vincentlaucsb/csv-parser .)
-  Meanwhile, for .tsv (tab-separated) files, a delimiter of '\t' should work
-  well (as long, again, as there are no tabs within your cell values.)
-
-
-  */
-
-  Multi_Type_Table
-      mtt{}; // mtto = 'MTT object. I probably could have just gone with \
-  'mtt' also.
-
-  int row_count = 0;
-
-  // Determining the length of the CSV file (which will also determine
-  // how long our valarrays should be):
-  { // Blocking off this code with brackets so that the stfs file
-    // stream goes out of scope afterwards)
-    std::ifstream stfs{file_path};
-    // if(!stfs) throw("Failed to open input file.");
-
-    for (std::string row; getline(stfs, row);) {
-      row_count++;
-    }
-
-    std::cout << "CSV-file row count: " << row_count << "\n";
-    // valarrays will be set to row_count's size. I confirmed
-    // that this is the correct approach; decreasing this size by 1
-    // resulted in an error, and increasing it by 1 created a spare
-    // 0 at the end.
-
-    mtt.length = row_count;
-  }
-
-  // Reopening the file so that we can get back to its beginning:
-  // (There could very well be a more efficient way to do so.)
-  std::ifstream stfs{file_path};
-  // if(!stfs) throw("Failed to open input file.");
-
-  std::map<int, std::string> col_indices; // This map will
-  // make it easier to look up the field associated with each
-  // column index within the CSV file.
-
-  // The following vector of maps will store all rows of our .csv file
-  // (aside from the header row).
-
-  // In order to add values into our vector of maps, we'll first
-  // use getline() to access each row of the .csv file; next,
-  // we'll use getline() to access each column within each row.
-
-  int row_index = 0;
-
-  for (std::string row; getline(stfs, row);) {
-    // std::cout << "Row:" << row << "\n";
-    if (row_index == 0) // We'll want to treat the first row differently,
-    // as we're assuming that it includes column names rather than
-    // values.
-    {
-      // std::cout << "First row.\n";
-      std::istringstream first_row;
-      first_row.str(row); // Based on:
-      // https://en.cppreference.com/w/cpp/string/basic_string/getline
-
-      // Using getline() with a tab delimiter argument in order
-      // to go through each line within our istringstream (i.e.
-      // the first row) and then extract all field names from it:
-      // (See https://en.cppreference.com/w/cpp/string/basic_string/getline
-      // for more information.)
-
-      // Note that, in this case, getline() is being used to split
-      // data within a single line (e.g. the current row) into
-      // a series of delimiter-separated values. This saves us the trouble
-      // of manually figuring out where one field ends and another begins
-      // (as fields may contain whitespace-separated words).
-      // This approach is based on the example code found at
-      // https://en.cppreference.com/w/cpp/string/basic_string/getline.
-
-      int col_index = 0;
-      for (std::string field_name; getline(first_row, field_name, delimiter);) {
-        // Adding this column name, together with its index,
-        // to col_indices (if instructed to do so by the caller):
-        if ((fields_to_import.empty()) ||
-            (fields_to_import.contains(field_name)))
-
-        {
-          col_indices[col_index] = field_name;
-          // Adding this column name to mtt's field-order vector:
-          mtt.field_order.push_back(field_name);
-
-          // Determining, based on the requested type for this
-          // field, the valarray map to which it should be added--then
-          // initializing a valarray that can hold its values:
-
-          // If no field has been specified, it will simply
-          // get added as a string.
-
-          if (field_type_map.contains(field_name) == false) {
-            std::valarray<std::string> va(row_count);
-            // Since 'va' is only present within this scope,
-            // we can reuse it as a name for other new
-            // valarrays.
-
-            mtt.stf[field_name] = va;
-          }
-
-          else if (field_type_map[field_name] == "string") {
-            std::valarray<std::string> va(row_count);
-            // Since 'va' is only present within this scope,
-            // we can reuse it as a name for other new
-            // valarrays.
-
-            mtt.stf[field_name] = va;
-          }
-
-          else if (field_type_map[field_name] == "double") {
-            std::valarray<double> va(row_count);
-            // Since 'va' is only present within this scope,
-            // we can reuse it as a name for other new
-            // valarrays.
-
-            mtt.df[field_name] = va;
-          }
-
-          else if (field_type_map[field_name] == "int") {
-            std::valarray<int> va(row_count);
-            // Since 'va' is only present within this scope,
-            // we can reuse it as a name for other new
-            // valarrays.
-
-            mtt.intf[field_name] = va;
-          }
-
-          else if (field_type_map[field_name] == "long") {
-            std::valarray<long> va(row_count);
-            // Since 'va' is only present within this scope,
-            // we can reuse it as a name for other new
-            // valarrays.
-
-            mtt.lf[field_name] = va;
-          }
-
-          // You might want to raise an error here if none of the
-          // previous conditions was met.
-
-          col_index++;
-        }
-      }
-
-    }
-
-    else { // In this case, the current row will be considered to
-      // contain values rather than headers.
-
-      // std::cout << "Value row\n";
-      // Initializing the current row as a new istringstream:
-      std::istringstream current_row;
-      current_row.str(row);
-
-      int col_index = 0;
-
-      for (std::string field_val; getline(current_row, field_val, delimiter);) {
-        // Checking whether the current index is part of our list
-        // of indices to include:
-        // std::cout << "Column:" << field_val << "\n";
-        // std::cout << "col_index:" << col_index << "\n";
-        if (col_indices.contains(
-                col_index)) { // Adding this value to the column's dedicated
-                              // valarray (and
-          // converting it to the proper type beforehand if necessary):
-
-          std::string field_name = col_indices[col_index];
-
-          if (field_type_map.contains(field_name) == false) {
-            mtt.stf[field_name][row_index] = field_val;
-          }
-
-          else if (field_type_map[field_name] == "string") {
-            mtt.stf[field_name][row_index] = field_val;
-          }
-
-          else if (field_type_map[field_name] == "double") {
-            mtt.df[field_name][row_index] = std::stod(field_val);
-          }
-
-          else if (field_type_map[field_name] == "int") {
-            mtt.intf[field_name][row_index] = std::stoi(field_val);
-          }
-
-          else if (field_type_map[field_name] == "long") {
-            mtt.lf[field_name][row_index] = std::stol(field_val);
-          };
-        }
-
-        col_index++;
-      }
-    }
-    row_index++;
-  }
-
-  return mtt;
-}
 
 int main() {
 
@@ -356,44 +77,49 @@ int main() {
                   {"FREIGHT", "long"},
                   {"UNIQUE_CARRIER", "string"},
                   {"ORIGIN", "string"}},
-                 {"PASSENGERS", "FREIGHT", "UNIQUE_CARRIER", "ORIGIN"});
+                 {"PASSENGERS", "FREIGHT", 
+                  "UNIQUE_CARRIER", "ORIGIN"});
 
-  std::cout << "Checking a few values within this new object.\n";
-  std::cout << "Field-order size: " << csv_mtt.field_order.size() << "\n";
-  std::cout << "Field-order values:\n";
-  for (int i = 0; i < csv_mtt.field_order.size(); i++) {
-    std::cout << csv_mtt.field_order[i] << " ";
-  }
-  std::cout << "\n";
+  // std::cout << "Checking a few values within this new object.\n";
+  // std::cout << "Field-order size: " << csv_mtt.field_order.size() << "\n";
+  // std::cout << "Field-order values:\n";
+  // for (int i = 0; i < csv_mtt.field_order.size(); i++) {
+  //   std::cout << csv_mtt.field_order[i] << " ";
+  // }
+  // std::cout << "\n";
 
-  std::cout << "ORIGIN-valarray size: " << csv_mtt.stf["ORIGIN"].size() << "\n";
+  // std::cout << "ORIGIN-valarray size: " << csv_mtt.stf["ORIGIN"].size() << "\n";
 
-  std::cout << "ORIGIN-valarray values:\n";
-  for (int i = 0; i < csv_mtt.stf["ORIGIN"].size(); i++) {
-    std::cout << csv_mtt.stf["ORIGIN"][i] << " ";
-  }
+  // std::cout << "ORIGIN-valarray values:\n";
+  // for (int i = 0; i < csv_mtt.stf["ORIGIN"].size(); i++) {
+  //   std::cout << "i:" << i << " " << csv_mtt.stf["ORIGIN"][i] << " ";
+  // }
 
-  std::cout << "PASSENGERS-valarray size: " << csv_mtt.df["PASSENGERS"].size()
-            << "\n";
+  // std::cout << "UNIQUE_CARRIER-valarray size: " << csv_mtt.stf["UNIQUE_CARRIER"].size() << "\n";
 
-  std::cout << "PASSENGERS-valarray values:\n";
-  for (int i = 0; i < csv_mtt.df["PASSENGERS"].size(); i++) {
-    std::cout << csv_mtt.df["PASSENGERS"][i] << " ";
-  }
+  // std::cout << "UNIQUE_CARRIER-valarray values:\n";
+  // for (int i = 0; i < csv_mtt.stf["UNIQUE_CARRIER"].size(); i++) {
+  //   std::cout << "i:" << i << " " << csv_mtt.stf["UNIQUE_CARRIER"][i] << " ";
+  // }
 
-  std::cout << "\nFinished checking values.\n";
+  // std::cout << "PASSENGERS-valarray size: " << csv_mtt.df["PASSENGERS"].size()
+  //           << "\n";
+
+  // std::cout << "PASSENGERS-valarray values:\n";
+  // for (int i = 0; i < csv_mtt.df["PASSENGERS"].size(); i++) {
+  //   std::cout << csv_mtt.df["PASSENGERS"][i] << " ";
+  // }
+
+  // std::cout << "\nFinished checking values.\n";
 
   // Testing out code that creates a pivot table using MTT data:
 
   // This code creates a pivot table using
   // Multi_Type_Table data.
 
-  std::map<std::string, Pivot_Row> pivot_table;
-  Multi_Type_Table mtt = csv_mtt;
-
+  
+  
   // std::cout << "Checkpoint Z.";
-
-  bool calculate_means = true;
 
   std::vector<std::string> double_value_fields{"PASSENGERS"};
 
@@ -407,115 +133,12 @@ int main() {
 
   // std::cout << "Checkpoint A.";
   // std::cout << "Checkpoint A2.";
-  std::cout << "Length of MTT:" << mtt.length << "\n";
-
-  for (int i = 0; i < mtt.length; i++)
-
-  {
-    // std::cout << "Checkpoint B.";
-    // Combining index fields into a single string that can serve
-    // as a dictionary key:
-    std::string pivot_index = "";
-    for (int j = 0; j < index_fields.size(); j++) {
-      // Retrieving the index values for this particular
-      // row:
-      pivot_index += csv_mtt.stf[index_fields[j]][i];
-      // We should add a separator after this field as long as it's
-      // not the final entry.
-      if (j != index_fields.size() - 1) {
-        pivot_index += pivot_index_separator;
-      }
-    }
-
-    // std::cout << "Checkpoint C";
-
-    if (pivot_table.contains(pivot_index) == false) {
-      // std::cout << "Creating a new pivot_index." << "\n";
-      // Creating a Pivot_Row that can serve as
-      // the value for this key:
-
-      Pivot_Row pr{};
-
-      // Pivot rows store maps of doubles and of
-      // longs under the names df and lf, respectively.
-      // df will be used to store sums,
-      // whereas lf will be used to store counts.
-      // (Means will get calculated later on via
-      // a separate process, so they won't get stored
-      // directly within these tables.)
-
-      // Thus, each entry within long_value_fields,
-      // double_value fields, and int_value_fields
-      // will get a sum entry (within
-      // df) and a count entry (within lf)Each of these entries
-      // will have a field name as its key, thus making
-      // them easier to keep track of.
-
-      // Initializing the dictionary's values:
-
-      for (int j = 0; j < double_value_fields.size(); j++)
-      {
-        // Note that sums will get added to the df (double-field)
-        // attribute of pr, whereas counts will get added
-        // to the lf. In order to help simplify this function,
-        // this will be the case for all metric fields,
-        // whether integer-, double-, or long-based. (It may be
-        // ideal, however, to update this code in the future
-        // so that integer and long sums get stored within
-        // lf rather than df.)
-  pr.df[double_value_fields[j]+"_sum"] = 0.0;
-  pr.lf[double_value_fields[j]+"_count"] = 0;
-      }
+  std::cout << "Length of MTT:" << csv_mtt.length << "\n";
 
 
-      for (int j = 0; j < int_value_fields.size(); j++)
-      {
-  pr.df[int_value_fields[j]+"_sum"] = 0.0;
-  pr.lf[int_value_fields[j]+"_count"] = 0;
-      }
-
-
-      for (int j = 0; j < long_value_fields.size(); j++)
-      {
-  pr.df[long_value_fields[j]+"_sum"] = 0.0;
-  pr.lf[long_value_fields[j]+"_count"] = 0;
-      }
-
-
-
-    }
-
-    else {
-          // In this case, we'll add new values to the existing 
-      // dictionary.
-
-
-      for (int j = 0; j < double_value_fields.size(); j++)
-      {
-  pivot_table[pivot_index].df[double_value_fields[j]+"_sum"] += mtt.df[
-  double_value_fields[j]][i];
-  pivot_table[pivot_index].lf[double_value_fields[j]+"_count"] ++;
-      }
-
-
-      for (int j = 0; j < int_value_fields.size(); j++)
-      {
-  pivot_table[pivot_index].df[int_value_fields[j]+"_sum"] += double(
-  mtt.df[int_value_fields[j]][i]);
-  pivot_table[pivot_index].lf[int_value_fields[j]+"_count"] ++;
-      }
-
-
-      for (int j = 0; j < long_value_fields.size(); j++)
-      {
-  pivot_table[pivot_index].df[long_value_fields[j]+"_sum"] += double(
-  mtt.df[long_value_fields[j]][i]);
-  pivot_table[pivot_index].lf[long_value_fields[j]+"_count"] ++;
-      }
-
-
-    }
-  }
+mtt_pivot_table(csv_mtt, 
+index_fields, double_value_fields, long_value_fields,
+int_value_fields);
 
   // std::cout << "Returning 0.\n";
   // return 0;
@@ -526,8 +149,9 @@ int main() {
           // The following, commented-out file is useful for testing
           // and debugging purposes, as it's much smaller (and thus won't
           // take as long to process).
-          // "T_T100_SEGMENT_ALL_CARRIER_2024_selected_cols_truncated.csv"
-          "T_T100_SEGMENT_ALL_CARRIER_2024_selected_cols.csv");
+          "T_T100_SEGMENT_ALL_CARRIER_2024_selected_cols_truncated.csv"
+          // "T_T100_SEGMENT_ALL_CARRIER_2024_selected_cols.csv"
+        );
 
   std::vector<std::map<std::string, std::string>> const csv_data =
       csv_data_and_header.first;

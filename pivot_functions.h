@@ -18,3 +18,4 @@
 std::vector<std::map<std::string, std::string>> pivot_table_to_vmss(std::map<std::string, 
     std::map<std::string, std::variant<double, long>>> const &pivot_table, 
     std::vector<std::string> const &header_row);
+
