@@ -147,7 +147,7 @@ int_value_fields);
 // the need to specify a loop.)
 
 std::valarray<double> test_sum = (
-pivot_mtt.df["PASSENGERS"] + pivot_mtt.df["PASSENGERS"]);
+pivot_mtt.df["PASSENGERS_sum"] + pivot_mtt.df["PASSENGERS_sum"]);
 
 // Adding this field to our list of fields so that it can
 // get included within printouts and CSV exports:
