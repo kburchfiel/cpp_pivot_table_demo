@@ -79,11 +79,16 @@ struct Pivot_Row {
 };
 
 
-Multi_Type_Table mtt_pivot_table(Multi_Type_Table mtt, 
-std::vector<std::string> index_fields,
-std::vector<std::string> double_value_fields = {},
-std::vector<std::string> long_value_fields = {},
-std::vector<std::string> int_value_fields = {},
+Multi_Type_Table mtt_pivot_table(Multi_Type_Table &mtt, 
+std::vector<std::string> const index_fields,
+std::vector<std::string> const double_value_fields = {},
+std::vector<std::string> const long_value_fields = {},
+std::vector<std::string> const int_value_fields = {},
 char pivot_index_separator = '|',
 bool calculate_means = false);
 
+void print_mtt(Multi_Type_Table mtt, 
+long n = 0, char print_separator = '\t');
+
+void mtt_to_csv(Multi_Type_Table &mtt, std::string file_path, 
+char delimiter = ',');

@@ -168,7 +168,6 @@ Multi_Type_Table csv_to_mtt(std::string file_path,
 
           // You might want to raise an error here if none of the
           // previous conditions was met.
-
         }
         col_index++; // Crucial to keep this outside the previous
         // if statement; otherwise, columns may get matched
@@ -194,7 +193,8 @@ Multi_Type_Table csv_to_mtt(std::string file_path,
         // std::cout << "Column:" << field_val << "\n";
         // std::cout << "col_index:" << col_index << "\n";
 
-        // std::cout << "Row index: " << row_index << " col_index: " << col_index
+        // std::cout << "Row index: " << row_index << " col_index: " <<
+        // col_index
         //           << " field_val: " << field_val << "\n";
         if (col_indices.contains(
                 col_index)) { // Adding this value to the column's dedicated
@@ -237,16 +237,16 @@ Multi_Type_Table csv_to_mtt(std::string file_path,
 }
 
 Multi_Type_Table
-mtt_pivot_table(Multi_Type_Table mtt, std::vector<std::string> index_fields,
-                std::vector<std::string> double_value_fields,
-                std::vector<std::string> long_value_fields,
-                std::vector<std::string> int_value_fields,
+mtt_pivot_table(Multi_Type_Table &mtt, 
+  std::vector<std::string> const index_fields,
+                std::vector<std::string> const double_value_fields,
+                std::vector<std::string> const long_value_fields,
+                std::vector<std::string> const int_value_fields,
                 char pivot_index_separator, bool calculate_means)
 
 {
 
   std::map<std::string, Pivot_Row> pivot_table;
-
   for (int i = 0; i < mtt.length; i++)
 
   {
@@ -257,7 +257,7 @@ mtt_pivot_table(Multi_Type_Table mtt, std::vector<std::string> index_fields,
     for (int j = 0; j < index_fields.size(); j++) {
       // Retrieving the index values for this particular
       // row:
-      //std::cout << "mtt.stf[index_fields[j]][i]: "
+      // std::cout << "mtt.stf[index_fields[j]][i]: "
       //          << mtt.stf[index_fields[j]][i] << "\n";
       pivot_index += mtt.stf[index_fields[j]][i];
       // We should add a separator after this field as long as it's
@@ -266,7 +266,6 @@ mtt_pivot_table(Multi_Type_Table mtt, std::vector<std::string> index_fields,
         pivot_index += pivot_index_separator;
       }
     }
-
 
     // std::cout << "Checkpoint C";
 
@@ -306,17 +305,16 @@ mtt_pivot_table(Multi_Type_Table mtt, std::vector<std::string> index_fields,
         // so that integer and long sums get stored within
         // lf rather than df.)
 
-        // std::cout << "Double-value field: " << double_value_fields[j] << "\n";
+        // std::cout << "Double-value field: " << double_value_fields[j] <<
+        // "\n";
 
         pr.df[double_value_fields[j] + "_sum"] = 0.0;
         pr.lf[double_value_fields[j] + "_count"] = 0;
 
-
-
-// std::cout << "Double-field values: " << pivot_table[pivot_index].df[
-// double_value_fields[j] + "_sum"] << " and " << pivot_table[pivot_index].lf[
-//double_value_fields[j] + "_count"] << "\n";
-
+        // std::cout << "Double-field values: " << pivot_table[pivot_index].df[
+        // double_value_fields[j] + "_sum"] << " and " <<
+        // pivot_table[pivot_index].lf[
+        // double_value_fields[j] + "_count"] << "\n";
       }
 
       for (int j = 0; j < int_value_fields.size(); j++) {
@@ -329,15 +327,14 @@ mtt_pivot_table(Multi_Type_Table mtt, std::vector<std::string> index_fields,
         pr.lf[long_value_fields[j] + "_count"] = 0;
       }
 
-    //   std::cout << "Adding pivot_index to pivot_table.\n";
+      //   std::cout << "Adding pivot_index to pivot_table.\n";
 
       pivot_table[pivot_index] = pr;
 
     }
 
-    else
-    {
-    //   std::cout << "Value already present within dictionary. " << "\n";
+    else {
+      //   std::cout << "Value already present within dictionary. " << "\n";
       // In this case, we'll add new values to the existing
       // dictionary.
     }
@@ -347,159 +344,325 @@ mtt_pivot_table(Multi_Type_Table mtt, std::vector<std::string> index_fields,
     // in order to add that row's values into the pivot_row
     // that we just created.
 
-
-      for (int j = 0; j < double_value_fields.size(); j++) {
-        // std::cout << "Double-value field: " << double_value_fields[j] << "\n";
-        // std::cout << "mtt.df[double_value_fields[j]][i]: "
-        //           << mtt.df[double_value_fields[j]][i] << "\n";
-        pivot_table[pivot_index].df[double_value_fields[j] + "_sum"] +=
-            mtt.df[double_value_fields[j]][i];
-            // std::cout << "Now updating count field:" << "\n";
-        pivot_table[pivot_index].lf[double_value_fields[j] + "_count"]++;
-      }
+    for (int j = 0; j < double_value_fields.size(); j++) {
+      // std::cout << "Double-value field: " << double_value_fields[j] << "\n";
+      // std::cout << "mtt.df[double_value_fields[j]][i]: "
+      //           << mtt.df[double_value_fields[j]][i] << "\n";
+      pivot_table[pivot_index].df[double_value_fields[j] + "_sum"] +=
+          mtt.df[double_value_fields[j]][i];
+      // std::cout << "Now updating count field:" << "\n";
+      pivot_table[pivot_index].lf[double_value_fields[j] + "_count"]++;
+    }
 
     //   std::cout << "Updating integer fields." << "\n";
 
-      for (int j = 0; j < int_value_fields.size(); j++) {
-        // std::cout << "mtt.intf[int_value_fields[j]][i]: "
-        //           << mtt.intf[int_value_fields[j]][i] << "\n";
-        pivot_table[pivot_index].df[int_value_fields[j] + "_sum"] +=
-            double(mtt.intf[int_value_fields[j]][i]);
-        pivot_table[pivot_index].lf[int_value_fields[j] + "_count"]++;
-      }
+    for (int j = 0; j < int_value_fields.size(); j++) {
+      // std::cout << "mtt.intf[int_value_fields[j]][i]: "
+      //           << mtt.intf[int_value_fields[j]][i] << "\n";
+      pivot_table[pivot_index].df[int_value_fields[j] + "_sum"] +=
+          double(mtt.intf[int_value_fields[j]][i]);
+      pivot_table[pivot_index].lf[int_value_fields[j] + "_count"]++;
+    }
 
     //   std::cout << "Updating long fields." << "\n";
 
-      for (int j = 0; j < long_value_fields.size(); j++) {
+    for (int j = 0; j < long_value_fields.size(); j++) {
 
-        // std::cout << "mtt.lf[long_value_fields[j]][i]: "
-        //           << mtt.lf[long_value_fields[j]][i] << "\n";
+      // std::cout << "mtt.lf[long_value_fields[j]][i]: "
+      //           << mtt.lf[long_value_fields[j]][i] << "\n";
 
-        pivot_table[pivot_index].df[long_value_fields[j] + "_sum"] +=
-            double(mtt.lf[long_value_fields[j]][i]);
-        pivot_table[pivot_index].lf[long_value_fields[j] + "_count"]++;
-      }
+      pivot_table[pivot_index].df[long_value_fields[j] + "_sum"] +=
+          double(mtt.lf[long_value_fields[j]][i]);
+      pivot_table[pivot_index].lf[long_value_fields[j] + "_count"]++;
     }
+  }
 
-//   std::cout << "Map size: " << pivot_table.size() << "\n";
+  //   std::cout << "Map size: " << pivot_table.size() << "\n";
 
   // Converting pivot_table to a Multi_Type_Table:
 
   Multi_Type_Table pivot_mtt{};
   pivot_mtt.length = pivot_table.size();
 
+  std::vector<std::string> field_order{}; // This vector will
+  // store field orders for the Multi_Type_Table that this
+  // function will use to return the pivot-table results.
+
   // We'll now add valarray entries that can store our index fields
-  // and corresponding pivot values.
+  // and corresponding pivot values. We'll also add field names
+  // to field_order as we go along.
 
+  // Determining the name of the index-field key:
+  std::string index_field_name = "";
+  for (int j = 0; j < index_fields.size(); j++) {
+    // Joining the index-field names together:
+    index_field_name += index_fields[j];
+    // We should add a separator after this field as long as it's
+    // not the final entry.
+    if (j != index_fields.size() - 1) {
+      index_field_name += pivot_index_separator;
+    }
+  }
 
-// Determining the name of the index-field key:
-std::string index_field_name = "";
-    for (int j = 0; j < index_fields.size(); j++) {
-      // Joining the index-field names together:
-      index_field_name += index_fields[j];
-      // We should add a separator after this field as long as it's
-      // not the final entry.
-      if (j != index_fields.size() - 1) {
-        index_field_name += pivot_index_separator;
+  // Adding a string-typed valarray for storing index-field values:
+  std::valarray<std::string> va(pivot_mtt.length);
+  pivot_mtt.stf[index_field_name] = va;
+  field_order.push_back(index_field_name);
+
+  // Adding, for each original value field, double- and long-typed
+  // valarrays that will store pivot values:
+
+  std::vector<std::string> combined_value_fields;
+
+  for (std::string s : double_value_fields) {
+    combined_value_fields.push_back(s);
+  }
+  for (std::string s : long_value_fields) {
+    combined_value_fields.push_back(s);
+  }
+  for (std::string s : int_value_fields) {
+    combined_value_fields.push_back(s);
+  }
+
+  for (int j = 0; j < combined_value_fields.size(); j++) {
+    std::valarray<double> vad(pivot_mtt.length);
+    pivot_mtt.df[combined_value_fields[j] + "_sum"] = vad;
+    field_order.push_back(combined_value_fields[j] + "_sum");
+
+    std::valarray<long> val(pivot_mtt.length);
+    pivot_mtt.lf[combined_value_fields[j] + "_count"] = val;
+    field_order.push_back(combined_value_fields[j] + "_count");
+  }
+
+  pivot_mtt.field_order = field_order;
+
+  // Adding all index and value data into these new valarrays:
+
+  // std::cout << "Checkpoint F.";
+
+  int valarray_index = 0;
+  for (auto &[index_field, pivot_row] : pivot_table) {
+    // Updating the index valarray:
+    pivot_mtt.stf[index_field_name][valarray_index] = index_field;
+
+    // Updating the double and long valarrays that hold sum and count
+    // data, respectively, for each value variable:
+
+    // std::cout << "Checkpoint G.";
+
+    for (int j = 0; j < combined_value_fields.size(); j++) {
+      pivot_mtt.df[combined_value_fields[j] + "_sum"][valarray_index] =
+          pivot_row.df[combined_value_fields[j] + "_sum"];
+
+      pivot_mtt.lf[combined_value_fields[j] + "_count"][valarray_index] =
+          pivot_row.lf[combined_value_fields[j] + "_count"];
+    }
+    valarray_index++;
+  }
+
+  return pivot_mtt;
+}
+
+void print_mtt(Multi_Type_Table mtt, long n, char print_separator) {
+  // This function prints the headers and data stored within a
+  // given multi_type table.
+
+  // n specifies how many rows of data to print. If set to 0,
+  // all rows will be printed.
+
+  // print_separator specifies which character to use to separate
+  // printed values. '\t', the default, should work well for most
+  // use cases.
+
+  // NOTE: When I pass a Multi_Type_Table reference to this function
+  // rather than a copy, nothing gets printed and my demo code
+  // ends with a segmentation fault. I'll need to need to figure
+  // out why this is the case.
+
+  // Printing headers:
+
+  for (int i = 0; i < mtt.field_order.size(); i++) {
+    std::cout << mtt.field_order[i] << print_separator;
+  }
+  std::cout << "\n";
+
+  // Printing values:
+
+  if (n == 0) // In this case, all values will be printed.
+  {
+    n = mtt.length;
+  }
+
+  for (int i = 0; i < n; i++)
+
+  {
+
+    for (int j = 0; j < mtt.field_order.size(); j++) {
+      // Determining which type-specific valarray this field is in,
+      // then retrieving it from that valarray:
+
+      if (mtt.stf.contains(mtt.field_order[j])) {
+        std::cout << mtt.stf[mtt.field_order[j]][i] << print_separator;
+      }
+
+      else if (mtt.df.contains(mtt.field_order[j])) {
+        std::cout << mtt.df[mtt.field_order[j]][i] << print_separator;
+      }
+
+      else if (mtt.lf.contains(mtt.field_order[j])) {
+        std::cout << mtt.lf[mtt.field_order[j]][i] << print_separator;
+      }
+
+      else if (mtt.intf.contains(mtt.field_order[j])) {
+        std::cout << mtt.intf[mtt.field_order[j]][i] << print_separator;
       }
     }
-
-// Adding a string-typed valarray for storing index-field values:
-std::valarray<std::string> va(pivot_mtt.length);
-    pivot_mtt.stf[index_field_name] = va;
-    
-
-// Adding, for each original value field, double- and long-typed 
-// valarrays that will store pivot values:
-
-std::vector<std::string> combined_value_fields;
-
-    for (std::string s: double_value_fields)
-    {combined_value_fields.push_back(s);}
-    for (std::string s: long_value_fields)
-    {combined_value_fields.push_back(s);}
-    for (std::string s: int_value_fields)
-    {combined_value_fields.push_back(s);}
-
-
-for (int j = 0; j < combined_value_fields.size(); j++)
-{
-std::valarray<double> vad(pivot_mtt.length);    
-pivot_mtt.df[combined_value_fields[j]+"_sum"] = vad;
-
-std::valarray<long> val(pivot_mtt.length);    
-pivot_mtt.lf[combined_value_fields[j]+"_count"] = val;
+    std::cout << "\n";
+  }
 }
 
-// Adding all index and value data into these new valarrays:
+void mtt_to_csv(Multi_Type_Table &mtt, 
+  std::string file_path, char delimiter) {
+  // This function exports a Multi_Type_Table to a CSV file.
 
-// std::cout << "Checkpoint F.";
+  // delimiter specifies which character to use to separate
+  // field entries. ',', the default, should work well as long as
+  // no commas are present within field names (in which case you
+  // may want to use '/t' instead).
 
-int valarray_index = 0;
-for (auto & [
-index_field, 
-pivot_row] : pivot_table) {
-// Updating the index valarray:
-pivot_mtt.stf[index_field_name][valarray_index] = index_field;
+  // This function will add all of each field's values
+  // at once rather than entering data for all fields row by row.
+  // This is meant to help speed up
+  // the function, as it will reduce the number of checks needed
+  // to determine in which typed valarray a given field lies.
 
-// Updating the double and long valarrays that hold sum and count
-// data, respectively, for each value variable:
+  std::vector<std::string> csv_data{
+      size_t(mtt.length + 1)}; // All values will need to
+  // get exported to string format in order to get correctly exported
+  // to the CSV file.
+  // Initializing the vector with blank empty strings will make it
+  // easier to access each entry using bracket notation. (We'll need
+  // to add one additional entry to account for the header row.)
 
-// std::cout << "Checkpoint G.";
+  for (int i = 0; i < mtt.field_order.size(); i++) {
+    std::string field_name = mtt.field_order[i];
+    // Adding this value to the table's header row:
+    csv_data[0] += field_name;
 
-for (int j = 0; j < combined_value_fields.size(); j++)
-{
-    pivot_mtt.df[combined_value_fields[j]+"_sum"][
-    valarray_index] = pivot_row.df[combined_value_fields[j]+"_sum"];
+    bool last_column = false;
+    if (i == (mtt.field_order.size() - 1)) {
+      last_column = true;
+    }
 
-    pivot_mtt.lf[combined_value_fields[j]+"_count"][
-    valarray_index] = pivot_row.lf[combined_value_fields[j]+"_count"];
-}
-valarray_index++;
-}
+    // We'll need to add a line break at the end of csv_data[0]
+    // if this is the last field in field_order;
+    // otherwise, we'll add a separator.
 
+    if (last_column == true) {
+      csv_data[0] += "\n";
+    }
 
-// Note: The following could be converted into its own print function--or even a '<<' overload.
-// It could also serve as the basis for your CSV exports (though,
-// for those items, you'd also need to convert values to strings
-// where necessary.)
-// You could derive your column fields from all of the
-// keys associated with .stf, .df, .intf, and .lf.
-// You could also return your header values here in order to use 
-// them as a basis for your CSV exports.
+    else {
+      csv_data[0] += delimiter;
+    }
 
-std::cout << "Values within valarray:\n";
+    // Determining which type-specific valarray this field is in,
+    // then retrieving it from that valarray:
 
-char print_separator = ','; // try '\t' for printing within
-// the terminal.
+    // The following code could likely be simplified by creating
+    // a separate function for adding in row data that takes
+    // a template as an argument.
 
-// Printing headers:
-std::cout << index_field_name << print_separator;
+    if (mtt.stf.contains(field_name)) {
 
-for (int j = 0; j < combined_value_fields.size(); j++)
-{
-    std::cout << combined_value_fields[j]+"_sum" << print_separator 
-<< combined_value_fields[j]+"_count" << print_separator;
-}
-std::cout << "\n";
+      std::valarray<std::string> va = mtt.stf[field_name];
 
+      for (int j = 0; j < mtt.length; j++) {
+        // Adding this field to the string for a given row:
+        // Offsetting j by 1 prevents this code from overwriting the
+        // header row.
 
+        csv_data[j + 1] += va[j];
 
-// Printing values:
+        if (last_column == true) {
+          csv_data[j + 1] += "\n";
+        }
 
-for (int i = 0; i < pivot_mtt.length; i++)
+        else {
+          csv_data[j + 1] += delimiter;
+        }
+      }
 
-{std::cout << i << print_separator << pivot_mtt.stf[index_field_name][i] << print_separator;
+    }
 
-for (int j = 0; j < combined_value_fields.size(); j++)
-{
-    std::cout << pivot_mtt.df[combined_value_fields[j]+"_sum"][i] 
-<< print_separator << pivot_mtt.lf[combined_value_fields[j]+"_count"][i] << print_separator;
+    else if (mtt.df.contains(field_name)) {
 
-}
-std::cout << "\n";
-}
+      std::valarray<double> va = mtt.df[field_name];
 
-return pivot_mtt;
-  
+      for (int j = 0; j < mtt.length; j++) {
+        // Non-string values will need to get converted to strings
+        // before they can get added into the CSV data.
+        csv_data[j + 1] += std::to_string(va[j]);
+
+        if (last_column == true) {
+          csv_data[j + 1] += "\n";
+        }
+
+        else {
+          csv_data[j + 1] += delimiter;
+        }
+      }
+
+    }
+
+    else if (mtt.lf.contains(field_name)) {
+
+      std::valarray<long> va = mtt.lf[field_name];
+
+      for (int j = 0; j < mtt.length; j++) {
+
+        csv_data[j + 1] += std::to_string(va[j]);
+
+        if (last_column == true) {
+          csv_data[j + 1] += "\n";
+        }
+
+        else {
+          csv_data[j + 1] += delimiter;
+        }
+      }
+
+    }
+
+    else if (mtt.intf.contains(field_name)) {
+
+      std::valarray<int> va = mtt.intf[field_name];
+
+      for (int j = 0; j < mtt.length; j++) {
+
+        csv_data[j + 1] += std::to_string(va[j]);
+
+        if (last_column == true) {
+          csv_data[j + 1] += "\n";
+        }
+
+        else {
+          csv_data[j + 1] += delimiter;
+        }
+      }
+    }
+  }
+
+  // Exporting the contents of csv_data to a CSV file:
+
+  // The following line is based on
+  // https://en.cppreference.com/cpp/io/basic_ofstream .
+  std::ofstream ofs(file_path, std::ios::out);
+
+  for (int i = 0; i < csv_data.size(); i++)
+
+  {
+
+    ofs << csv_data[i];
+  }
 }

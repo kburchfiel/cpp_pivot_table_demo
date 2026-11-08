@@ -21,16 +21,13 @@ Other references will be mentioned within the codebase.
 
 To do:
 
-1. Add additional documentation
+1. Add additional documentation.
+
 2. Report the time each function takes to run within this file.
-3. Continue working on your code that creates a pivot table
-out of a Multi_Type_Table. Specifically, (1) convert the 
-table data into a struct of maps of valarrays of various types
-(ideally a Multi_Type_Table itself) and (2) use vector division
-with this table to calculate means. Don't worry about column
-order for now, as you can specify an updated order within your 
-CSV-export script.
-4. Add in code that can export a multi-type-table to a CSV file.
+
+3. Add code to mtt_pivot_table that uses vector division
+with this table to calculate means. This may require adding
+additional code that casts long and int values to doubles.
 5. Compare how long your code takes to run via your two different
 approaches to storing pivot-table data
 (i.e. as a struct of maps of valarrays and as a vector
@@ -133,12 +130,46 @@ int main() {
 
   // std::cout << "Checkpoint A.";
   // std::cout << "Checkpoint A2.";
-  std::cout << "Length of MTT:" << csv_mtt.length << "\n";
+  std::cout << "Length of csv_mtt:" << csv_mtt.length << "\n";
+
+std::cout << "Contents of csv_mtt:\n";
+
+print_mtt(csv_mtt);
 
 
-mtt_pivot_table(csv_mtt, 
+Multi_Type_Table pivot_mtt = mtt_pivot_table(csv_mtt, 
 index_fields, double_value_fields, long_value_fields,
 int_value_fields);
+
+// Testing out the addition of a new field:
+// (This sort of operation is much easier to do with 
+// valarrays than with vectors, as it eliminates 
+// the need to specify a loop.)
+
+std::valarray<double> test_sum = (
+pivot_mtt.df["PASSENGERS"] + pivot_mtt.df["PASSENGERS"]);
+
+// Adding this field to our list of fields so that it can
+// get included within printouts and CSV exports:
+
+pivot_mtt.df["2x_PASSENGERS"] = test_sum;
+
+pivot_mtt.field_order.push_back("2x_PASSENGERS");
+
+std::cout << "Printing pivot_mtt:\n\n";
+
+print_mtt(pivot_mtt);
+
+std::string mtt_csv_file_path = "pivot_data_mtt.csv";
+
+std::cout << "Exporting pivot_mtt to a CSV file.\n";
+
+mtt_to_csv(pivot_mtt, mtt_csv_file_path);
+
+std::cout << "Finished pivot_mtt export.\n";
+
+// Part 2: Alternative set of code that stores data as
+// vectors of string/string maps
 
   // std::cout << "Returning 0.\n";
   // return 0;
