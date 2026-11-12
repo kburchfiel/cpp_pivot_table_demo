@@ -61,6 +61,10 @@ post that asked about using C++ for pivot tables (but mention its
 limitations, together with better alternatives like
 the DataFrame library and Vicent La's library)
 
+6. Add in some equivalent Python code in order to (1) check your
+output and (2) compare speeds. (Chances are the Python code will
+be faster, given that Pandas uses Numpy under the hood)
+
 */
 
 #include <cstdlib>
