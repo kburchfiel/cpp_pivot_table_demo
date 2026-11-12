@@ -29,8 +29,9 @@ when map keys are printed to .csv files, their original field order will be pres
 
 
 
-std::pair<std::vector<std::map<std::string, std::string>>, std::vector<std::string>>
-csv_to_vmss(std::string file_path, char delimiter) {
+std::pair<std::vector<std::map<std::string, std::string>>, 
+std::vector<std::string>> csv_to_vmss(
+std::string file_path, char delimiter) {
 /* vmss stands for 'Vector of maps of strings & strings.
 For .csv files, the default ',' delimiter should work fine
 *unless* there are commas within the cell values themselves (in which case
