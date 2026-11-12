@@ -25,6 +25,22 @@ To do:
 simple_csv_import_export.cpp, then move your corresponding
 code within this file into it.
 
+1. Make it possible to include and exclude certain column values.
+You can do so by specifying lists of such values within your 
+configuration file, then adding two maps of string/vector pairs,
+one for the inclusion list and another for the exclusion lists.
+The vectors will contain lists of items to include or exclude
+for each variable.
+You can add these items to the configuration file as follows:
+
+Field 1: variable name (i.e. items_to_include or items_to_exclude)
+Field 2: Variable 
+Field 3: Item to include/exclude
+
+Next, update your configuration-import script to add, for each 
+variable in field 2, all items in field 3 to a vector of strings.
+
+
 1. Add additional documentation, particularly for the configuration
 file. (Also note that if you ever needed to add in maps of string/vector
 pairs, you could do so by adding in 3 columns: the first for the variable
