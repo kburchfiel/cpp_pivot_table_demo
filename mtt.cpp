@@ -298,7 +298,7 @@ mtt_pivot_table(Multi_Type_Table &mtt,
       for (int j = 0; j < double_value_fields.size(); j++) {
         // Note that sums will get added to the df (double-field)
         // attribute of pr, whereas counts will get added
-        // to the lf. In order to help simplify this function,
+        // to its lf attribute. In order to help simplify this function,
         // this will be the case for all metric fields,
         // whether integer-, double-, or long-based. (It may be
         // ideal, however, to update this code in the future
