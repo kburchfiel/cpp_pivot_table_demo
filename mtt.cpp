@@ -488,12 +488,19 @@ void print_mtt(Multi_Type_Table mtt, long n, char print_separator) {
 
   // Printing values:
 
+  int rows_to_print = 0;
+
   if (n == 0) // In this case, all values will be printed.
   {
-    n = mtt.length;
+    rows_to_print = mtt.length;
   }
 
-  for (int i = 0; i < n; i++)
+  else // Making sure we don't attempt to print more rows than
+  // the Multi_Type_Table contains
+
+  {rows_to_print = std::min(long(mtt.length), n);}
+
+  for (int i = 0; i < rows_to_print; i++)
 
   {
 

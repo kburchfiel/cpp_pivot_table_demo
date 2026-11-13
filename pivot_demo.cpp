@@ -34,8 +34,9 @@ for each variable.
 You can add these items to the configuration file as follows:
 
 Field 1: variable name (i.e. items_to_include or items_to_exclude)
-Field 2: Variable 
-Field 3: Item to include/exclude
+Field 2: Field 
+Field 3: Field value for inclusion/exclusion to add to this field's
+vector
 
 Next, update your configuration-import script to add, for each 
 variable in field 2, all items in field 3 to a vector of strings.
@@ -52,16 +53,24 @@ for the vector corresponding to that key.)
 3. Add code to mtt_pivot_table that uses vector division
 with this table to calculate means. This may require adding
 additional code that casts long and int values to doubles.
+
+4. Also show how you can add custom fields to a given valarray
+(such as the output of pivot_mtt). This would involve accessing
+a certain set of config data (e.g. config_map[0]); running
+pivot_mtt; adding additional fields within the script; then exporting
+the results to a separate .csv file.)
+
 5. Compare how long your code takes to run via your two different
 approaches to storing pivot-table data
 (i.e. as a struct of maps of valarrays and as a vector
 of string/string maps.)
-5. Share pivot-table functions/applications within StackOverflow
+
+6. Share pivot-table functions/applications within StackOverflow
 post that asked about using C++ for pivot tables (but mention its
 limitations, together with better alternatives like
 the DataFrame library and Vicent La's library)
 
-6. Add in some equivalent Python code in order to (1) check your
+7. Add in some equivalent Python code in order to (1) check your
 output and (2) compare speeds. (Chances are the Python code will
 be faster, given that Pandas uses Numpy under the hood)
 
@@ -121,79 +130,126 @@ int main() {
 
   // Adding configuration info from vvs into our program:
 
-  std::string file_path;
-  bool calculate_means;
+  // Data-import variables:
+
+  std::string data_file_path;
   std::map<std::string, std::string> field_type_map{};
   std::set<std::string> fields_to_import{};
+
+// Defining a struct that can hold pivot-table-specific variables:
+// (Adding these structs to a map will allow us to more easily
+// create multiple pivot tables from the same data source.)
+
+struct Pivot_Config {
+bool calculate_means;
   std::vector<std::string> index_fields{};
   std::vector<std::string> double_value_fields{};
   std::vector<std::string> long_value_fields{};
   std::vector<std::string> int_value_fields{};
+  std::string table_file_path {"pivot_file.csv"}; // This value should
+  // be overridden within config.csv in order to prevent subsequent
+  // pivot tables from overwriting previous ones.
+};
 
-  for (int i = 0; i < vvs.size(); i++) {
+// The following map will hold configuration data for one or more
+// pivot tables. (Using integer-based keys lets us ensure that
+// pivot tables are created in the numerical order specified
+// by our key values.)
+
+std::map<int, Pivot_Config> config_map {};
+
+  
+  for (int i = 1; i < vvs.size(); i++) { // The first row is a 
+    // header row for users' reference, which we can skip here.
+
     std::vector<std::string> vs = vvs[i];
     // The first column of each configuration entry
-    // will specify to which variable the data should
-    // be added; subsequent columns will specify
-    // the value of that variable.
-
+    // will specify to which pivot-table configuration
+    // (if any) a particular row applies; the second 
+    // column will specify a variable for that configuration;
+    // and subsequent columns will specify one or more values
+    // for that variable.
     // Note that certain variables may have multiple entries
     // within the configuration file. This will allow
     // multiple items (e.g. multiple vector or map values)
     // to get added in for that file without making
     // the CSV file wider than necessary.
 
-    // String-based variables:
-    if (vs[0] == "file_path") // In this case, vs[0] will be
+    if (vs[0] == "Import") // This row contains import-related data.
+
+
+    {
+
+    if (vs[1] == "data_file_path") // In this case, vs[0] will be
     // a configuration key, and vs[1] will be its corresponding
     // value. We can ignore any columns that follow vs[1].
     {
-      file_path = vs[1];
+      data_file_path = vs[2];
     }
 
-    // Boolean variables:
-    else if (vs[0] == "calculate_means") {
-      if (vs[1] == "Y") {
-        calculate_means = true;
+
+    else if (vs[1] == "field_type_map") {
+    field_type_map[vs[2]] = vs[3];
+  }
+
+    else if (vs[1] == "fields_to_import") {
+      fields_to_import.insert(vs[2]);
+    }
+
+
+
+    }
+
+    else // This row contains data for a particular pivot table.
+  {
+    int pivot_index = std::stoi(vs[0]);
+    if (config_map.contains(pivot_index) == false)
+    {// Adding an entry for this particular pivot index:
+
+      Pivot_Config pc {};
+      config_map[pivot_index] = pc;
+    }
+
+
+    // Updating a particular pivot table's configuration info
+    // with the data stored in this row:
+    if (vs[1] == "calculate_means") {
+      if (vs[2] == "Y") {
+        config_map[pivot_index].calculate_means = true;
       } else {
-        calculate_means = false;
+        config_map[pivot_index].calculate_means = false;
       }
     }
 
-    // Map-based variables:
-    else if (vs[0] == "field_type_map") {
-    field_type_map[vs[1]] = vs[2];
-  }
-
-  // Set-based variables:
-    else if (vs[0] == "fields_to_import") {
-      fields_to_import.insert(vs[1]);
+    else if (vs[1] == "index_fields") {
+      config_map[pivot_index].index_fields.push_back(vs[2]);
     }
 
-  // Vector-based variables:
-    else if (vs[0] == "index_fields") {
-      index_fields.push_back(vs[1]);
+    else if (vs[1] == "double_value_fields") {
+      config_map[pivot_index].double_value_fields.push_back(vs[2]);
     }
 
-    else if (vs[0] == "double_value_fields") {
-      double_value_fields.push_back(vs[1]);
+    else if (vs[1] == "long_value_fields") {
+      config_map[pivot_index].long_value_fields.push_back(vs[2]);
     }
 
-    else if (vs[0] == "long_value_fields") {
-      long_value_fields.push_back(vs[1]);
+    else if (vs[1] == "int_value_fields") {
+      config_map[pivot_index].int_value_fields.push_back(vs[2]);
     }
 
-    else if (vs[0] == "int_value_fields") {
-      int_value_fields.push_back(vs[1]);
-    }
 
+    else if (vs[1] == "table_file_path") // In this case, vs[0] will be
+    // a configuration key, and vs[1] will be its corresponding
+    // value. We can ignore any columns that follow vs[1].
+    {
+      config_map[pivot_index].table_file_path = vs[2];
+    }
 
   }
+}
 
-  // Ensuring this configuration data got imported successfully:
-  std::cout << "Configuration info:\n";
-  std::cout << "File path:\t" << file_path << "\n";
-  std::cout << "calculate_means:\t" << calculate_means << "\n";
+  std::cout << "Import configuration info:\n";
+  std::cout << "Data file path:\t" << data_file_path << "\n";
   std::cout << "field_type_map:\t";
 
 for (auto &[field_name, 
@@ -208,33 +264,6 @@ for (std::string field: fields_to_import)
 }
 std::cout << "\n";
 
-// Range for loop:
-  std::cout << "index_fields:\t" ;
-for (std::string field: index_fields)
-{std::cout << field << "\t";
-}
-
-// Older method:
-std::cout << "\n";
-  std::cout << "double_value_fields:\t" ;
-for (int i = 0; i < double_value_fields.size(); i++)
-{std::cout << double_value_fields[i] << "\t";
-}
-std::cout << "\n";
-
-// You also don't need to specify the value type within 
-// range for loops:
-  std::cout << "long_value_fields:\t" ;
-for (auto field: long_value_fields)
-{std::cout << field << "\t";
-}
-std::cout << "\n";
-  std::cout << "int_value_fields:\t" ;
-
-  for (auto field: int_value_fields)
-{std::cout << field << "\t";
-}
-std::cout << "\n";
 
   // Testing out an import of CSV data into a Multi_Type_Table:
 
@@ -247,50 +276,7 @@ std::cout << "\n";
   // Passengers should really be a long-type field as well,
   // but I'm making it a double field for testing purposes.
   Multi_Type_Table csv_mtt =
-      csv_to_mtt(file_path, field_type_map, fields_to_import);
-
-  // std::cout << "Checking a few values within this new object.\n";
-  // std::cout << "Field-order size: " << csv_mtt.field_order.size() << "\n";
-  // std::cout << "Field-order values:\n";
-  // for (int i = 0; i < csv_mtt.field_order.size(); i++) {
-  //   std::cout << csv_mtt.field_order[i] << " ";
-  // }
-  // std::cout << "\n";
-
-  // std::cout << "ORIGIN-valarray size: " << csv_mtt.stf["ORIGIN"].size() <<
-  // "\n";
-
-  // std::cout << "ORIGIN-valarray values:\n";
-  // for (int i = 0; i < csv_mtt.stf["ORIGIN"].size(); i++) {
-  //   std::cout << "i:" << i << " " << csv_mtt.stf["ORIGIN"][i] << " ";
-  // }
-
-  // std::cout << "UNIQUE_CARRIER-valarray size: " <<
-  // csv_mtt.stf["UNIQUE_CARRIER"].size() << "\n";
-
-  // std::cout << "UNIQUE_CARRIER-valarray values:\n";
-  // for (int i = 0; i < csv_mtt.stf["UNIQUE_CARRIER"].size(); i++) {
-  //   std::cout << "i:" << i << " " << csv_mtt.stf["UNIQUE_CARRIER"][i] << " ";
-  // }
-
-  // std::cout << "PASSENGERS-valarray size: " <<
-  // csv_mtt.df["PASSENGERS"].size()
-  //           << "\n";
-
-  // std::cout << "PASSENGERS-valarray values:\n";
-  // for (int i = 0; i < csv_mtt.df["PASSENGERS"].size(); i++) {
-  //   std::cout << csv_mtt.df["PASSENGERS"][i] << " ";
-  // }
-
-  // std::cout << "\nFinished checking values.\n";
-
-  // Testing out code that creates a pivot table using MTT data:
-
-  // This code creates a pivot table using
-  // Multi_Type_Table data.
-
-  // std::cout << "Checkpoint Z.";
-
+      csv_to_mtt(data_file_path, field_type_map, fields_to_import);
 
   char pivot_index_separator = '|';
 
@@ -298,40 +284,89 @@ std::cout << "\n";
   // std::cout << "Checkpoint A2.";
   std::cout << "Length of csv_mtt:" << csv_mtt.length << "\n";
 
-  std::cout << "Contents of csv_mtt:\n";
+  std::cout << "Sample contents of csv_mtt:\n";
 
-  print_mtt(csv_mtt);
+  print_mtt(csv_mtt, 10);
+
+
+
+// Calling pivot_mtt for each set of pivot-table configuration
+// values specified within config_map:
+
+
+
+for (auto &[pivot_index, pc]: config_map)
+
+
+{
+std::cout << "Creating pivot table #" << pivot_index << ".\n";
+
+
+
+std::cout << "calculate_means:\t" << pc.calculate_means << "\n";
+
+// Range for loop:
+  std::cout << "index_fields:\t" ;
+for (std::string field: pc.index_fields)
+{std::cout << field << "\t";
+}
+
+// Older method:
+std::cout << "\n";
+  std::cout << "double_value_fields:\t" ;
+for (int i = 0; i < pc.double_value_fields.size(); i++)
+{std::cout << pc.double_value_fields[i] << "\t";
+}
+std::cout << "\n";
+
+// You also don't need to specify the value type within 
+// range for loops:
+  std::cout << "long_value_fields:\t" ;
+for (auto field: pc.long_value_fields)
+{std::cout << field << "\t";
+}
+std::cout << "\n";
+  std::cout << "int_value_fields:\t" ;
+
+  for (auto field: pc.int_value_fields)
+{std::cout << field << "\t";
+}
+std::cout << "\n";
+
+std::cout << "Table file path:\t" << pc.table_file_path << "\n";
+
 
   Multi_Type_Table pivot_mtt =
-      mtt_pivot_table(csv_mtt, index_fields, double_value_fields,
-                      long_value_fields, int_value_fields);
+      mtt_pivot_table(csv_mtt, pc.index_fields, pc.double_value_fields,
+                      pc.long_value_fields, pc.int_value_fields);
 
   // Testing out the addition of a new field:
   // (This sort of operation is much easier to do with
   // valarrays than with vectors, as it eliminates
   // the need to specify a loop.)
 
-  std::valarray<double> test_sum =
-      (pivot_mtt.df["PASSENGERS_sum"] + pivot_mtt.df["PASSENGERS_sum"]);
+  // std::valarray<double> test_sum =
+  //     (pivot_mtt.df["PASSENGERS_sum"] + pivot_mtt.df["PASSENGERS_sum"]);
 
-  // Adding this field to our list of fields so that it can
-  // get included within printouts and CSV exports:
+  // // Adding this field to our list of fields so that it can
+  // // get included within printouts and CSV exports:
 
-  pivot_mtt.df["2x_PASSENGERS"] = test_sum;
+  // pivot_mtt.df["2x_PASSENGERS"] = test_sum;
 
-  pivot_mtt.field_order.push_back("2x_PASSENGERS");
+  // pivot_mtt.field_order.push_back("2x_PASSENGERS");
 
-  std::cout << "Printing pivot_mtt:\n\n";
+  std::cout << "\nSample pivot_mtt content:\n\n";
 
-  print_mtt(pivot_mtt);
-
-  std::string mtt_csv_file_path = "pivot_data_mtt.csv";
+  print_mtt(pivot_mtt, 10);
 
   std::cout << "Exporting pivot_mtt to a CSV file.\n";
 
-  mtt_to_csv(pivot_mtt, mtt_csv_file_path);
+  mtt_to_csv(pivot_mtt, pc.table_file_path);
 
-  std::cout << "Finished pivot_mtt export.\n";
+  std::cout << "Finished pivot_mtt export for table #" << pivot_index << ".\n";
+
+
+}
 
   // Part 2: Alternative set of code that stores data as
   // vectors of string/string maps
@@ -357,15 +392,14 @@ std::cout << "\n";
 
   // Creating a pivot table:
 
-  // char pivot_index_separator = '|'; // Defined earlier
-  // std::vector<std::string> index_fields{"UNIQUE_CARRIER", "ORIGIN"};
-  // defined earlier
+  Pivot_Config pc = config_map[0];
+
   std::vector<std::string> value_fields{"PASSENGERS", "FREIGHT"};
 
   std::pair<
       std::map<std::string, std::map<std::string, std::variant<double, long>>>,
       std::vector<std::string>> const pivot_and_header =
-      vmss_pivot_table(csv_data, index_fields, value_fields);
+      vmss_pivot_table(csv_data, pc.index_fields, value_fields);
 
   std::map<std::string, std::map<std::string, std::variant<double, long>>>
       pivot_table_from_vmss = pivot_and_header.first;
@@ -416,5 +450,5 @@ std::cout << "\n";
   std::vector<std::map<std::string, std::string>> pivot_table_vmss =
       pivot_table_to_vmss(pivot_table_from_vmss, header_row);
 
-  vmss_to_csv("pivot_data.csv", pivot_table_vmss, header_row);
+  vmss_to_csv("pivot_table_from_vmss.csv", pivot_table_vmss, header_row);
 }
