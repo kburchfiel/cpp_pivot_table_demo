@@ -74,6 +74,8 @@ the DataFrame library and Vicent La's library)
 output and (2) compare speeds. (Chances are the Python code will
 be faster, given that Pandas uses Numpy under the hood)
 
+8. Compile the code to assembly to see what the output looks like
+
 */
 
 #include <cstdlib>
