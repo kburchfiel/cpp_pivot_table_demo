@@ -32,6 +32,13 @@ Multi_Type_Table csv_to_mtt(std::string file_path,
 
   */
 
+  /* My function-timing code came from
+  https://github.com/kburchfiel/cpp_pivot_tables/blob/main/
+  pivot_compressors.cpp,
+  an earlier pivot-table script I had written. */
+
+  auto function_start_time = std::chrono::high_resolution_clock::now();
+
   Multi_Type_Table
       mtt{}; // mtto = 'MTT object. I probably could have just gone with \
   'mtt' also.
@@ -88,9 +95,9 @@ Multi_Type_Table csv_to_mtt(std::string file_path,
       first_row.str(row); // Based on:
       // https://en.cppreference.com/w/cpp/string/basic_string/getline
 
-      // Using getline() with a tab delimiter argument in order
-      // to go through each line within our istringstream (i.e.
-      // the first row) and then extract all field names from it:
+      // Using getline() with a delimiter argument in order
+      // to go through each line within our istringstream for
+      // the first row and then extract all field names from it:
       // (See https://en.cppreference.com/w/cpp/string/basic_string/getline
       // for more information.)
 
@@ -132,36 +139,26 @@ Multi_Type_Table csv_to_mtt(std::string file_path,
 
           else if (field_type_map[field_name] == "string") {
             std::valarray<std::string> va(mtt.length);
-            // Since 'va' is only present within this scope,
-            // we can reuse it as a name for other new
-            // valarrays.
 
             mtt.stf[field_name] = va;
           }
 
           else if (field_type_map[field_name] == "double") {
             std::valarray<double> va(mtt.length);
-            // Since 'va' is only present within this scope,
-            // we can reuse it as a name for other new
-            // valarrays.
 
             mtt.df[field_name] = va;
           }
 
           else if (field_type_map[field_name] == "int") {
             std::valarray<int> va(mtt.length);
-            // Since 'va' is only present within this scope,
-            // we can reuse it as a name for other new
-            // valarrays.
+
 
             mtt.intf[field_name] = va;
           }
 
           else if (field_type_map[field_name] == "long") {
             std::valarray<long> va(mtt.length);
-            // Since 'va' is only present within this scope,
-            // we can reuse it as a name for other new
-            // valarrays.
+
 
             mtt.lf[field_name] = va;
           }
@@ -169,7 +166,7 @@ Multi_Type_Table csv_to_mtt(std::string file_path,
           // You might want to raise an error here if none of the
           // previous conditions was met.
         }
-        col_index++; // Crucial to keep this outside the previous
+        col_index++; // It's crucial to keep this outside the previous
         // if statement; otherwise, columns may get matched
         // to the wrong index within col_indices.
       }
@@ -177,7 +174,7 @@ Multi_Type_Table csv_to_mtt(std::string file_path,
     }
 
     // Adding values into the valarrays created within the previous
-    // if statement
+    // if statement:
 
     else {
       // std::cout << "Value row\n";
@@ -233,23 +230,223 @@ Multi_Type_Table csv_to_mtt(std::string file_path,
     row_index++;
   }
 
+  auto function_end_time = std::chrono::high_resolution_clock::now();
+  auto function_run_time =
+      std::chrono::duration<double>(function_end_time - function_start_time)
+          .count();
+  std::cout << "Finished running csv_to_mtt with a " << row_count
+            << "-row dataset in " << function_run_time << " seconds.\n";
+
   return mtt;
 }
 
-Multi_Type_Table
-mtt_pivot_table(Multi_Type_Table &mtt, 
-  std::vector<std::string> const index_fields,
-                std::vector<std::string> const double_value_fields,
-                std::vector<std::string> const long_value_fields,
-                std::vector<std::string> const int_value_fields,
-                char pivot_index_separator, bool calculate_means)
+Multi_Type_Table mtt_pivot_table(
+    Multi_Type_Table &mtt, std::vector<std::string> const index_fields,
+    std::vector<std::string> const double_value_fields,
+    std::vector<std::string> const long_value_fields,
+    std::vector<std::string> const int_value_fields, char pivot_index_separator,
+    bool calculate_means,
+    std::map<std::string, std::set<std::string>> string_vals_to_include,
+    std::map<std::string, std::set<std::string>> string_vals_to_exclude,
+
+    std::map<std::string, std::set<int>> int_vals_to_include,
+    std::map<std::string, std::set<int>> int_vals_to_exclude,
+
+    std::map<std::string, std::set<double>> double_vals_to_include,
+    std::map<std::string, std::set<double>> double_vals_to_exclude,
+
+    std::map<std::string, std::set<long>> long_vals_to_include,
+    std::map<std::string, std::set<long>> long_vals_to_exclude)
 
 {
+
+  /* This function creates a pivot table using data from a
+    Multi_Type_Table. (More documentation to come)
+    */
+
+  auto function_start_time = std::chrono::high_resolution_clock::now();
 
   std::map<std::string, Pivot_Row> pivot_table;
   for (int i = 0; i < mtt.length; i++)
 
   {
+    // Determining, based on our inclusion/exclusion variables,
+    // whether this row's data should get considered for the table:
+    // (Note: This code could probably be dramatically simplified
+    // by using a template-based approach--which probably holds true
+    // for much of the other code within this file as well!)
+
+    bool include_row = true;
+
+    if (string_vals_to_include.size() > 0)
+
+    {
+      // We'll now iterate through each set of variables and variable
+      // values within string_vals_to_include. If we find that a row's
+      // value for a particular variable is not listed within the
+      // set of values to include, our include_row flag will be set
+      // to false.
+
+      for (auto &[variable, vals] : string_vals_to_include) {
+        if (vals.contains(mtt.stf[variable][i]) == false) {
+          include_row = false;
+          break;
+        }
+      }
+    }
+
+    // There's no need to run the following include/exclude checks
+    // if include_row is already false. Instead, we should
+    // move to the next row within the for loop.
+    if (include_row == false) {
+      continue;
+    }
+
+    // The following set of code will be similar, except we'll set
+    // include_row to false if a given variable's value *is* present
+    // within our list of variables to exclude.
+
+    if (string_vals_to_exclude.size() > 0)
+
+    {
+      for (auto &[variable, vals] : string_vals_to_exclude) {
+        if (vals.contains(mtt.stf[variable][i]) == true) {
+          include_row = false;
+          break;
+        }
+      }
+    }
+
+    if (include_row == false) {
+      continue;
+    }
+
+    // The following checks are similar to the previous two, except
+    // that they check for double-, int-, and long-typed variables.
+
+    // Double-variable checks:
+
+    if (double_vals_to_include.size() > 0)
+
+    {
+
+      for (auto &[variable, vals] : double_vals_to_include) {
+        if (vals.contains(mtt.df[variable][i]) == false) {
+          include_row = false;
+          break;
+        }
+      }
+    }
+
+    if (include_row == false) {
+      continue;
+    }
+
+    if (double_vals_to_exclude.size() > 0)
+
+    {
+      for (auto &[variable, vals] : double_vals_to_exclude) {
+        if (vals.contains(mtt.df[variable][i]) == true) {
+          include_row = false;
+          break;
+        }
+      }
+    }
+
+    if (include_row == false) {
+      continue;
+    }
+
+    // Long-variable checks:
+
+    if (long_vals_to_include.size() > 0)
+
+    {
+      // We'll now iterate through each set of variables and variable
+      // values within long_vals_to_include. If we find that a row's
+      // value for a particular variable is not listed within the
+      // set of values to include, our include_row flag will be set
+      // to false.
+
+      for (auto &[variable, vals] : long_vals_to_include) {
+        if (vals.contains(mtt.lf[variable][i]) == false) {
+          include_row = false;
+          break;
+        }
+      }
+    }
+
+    // There's no need to run the following include/exclude checks
+    // if include_row is already false. Instead, we should
+    // move to the next row within the for loop.
+    if (include_row == false) {
+      continue;
+    }
+
+    // The following set of code will be similar, except we'll set
+    // include_row to false if a given variable's value *is* present
+    // within our list of variables to exclude.
+
+    if (long_vals_to_exclude.size() > 0)
+
+    {
+      for (auto &[variable, vals] : long_vals_to_exclude) {
+        if (vals.contains(mtt.lf[variable][i]) == true) {
+          include_row = false;
+          break;
+        }
+      }
+    }
+
+    if (include_row == false) {
+      continue;
+    }
+
+    // Integer-variable checks:
+
+    if (int_vals_to_include.size() > 0)
+
+    {
+      // We'll now iterate through each set of variables and variable
+      // values within int_vals_to_include. If we find that a row's
+      // value for a particular variable is not listed within the
+      // set of values to include, our include_row flag will be set
+      // to false.
+
+      for (auto &[variable, vals] : int_vals_to_include) {
+        if (vals.contains(mtt.intf[variable][i]) == false) {
+          include_row = false;
+          break;
+        }
+      }
+    }
+
+    // There's no need to run the following include/exclude checks
+    // if include_row is already false. Instead, we should
+    // move to the next row within the for loop.
+    if (include_row == false) {
+      continue;
+    }
+
+    if (int_vals_to_exclude.size() > 0)
+
+    {
+      for (auto &[variable, vals] : int_vals_to_exclude) {
+        if (vals.contains(mtt.intf[variable][i]) == true) {
+          include_row = false;
+          break;
+        }
+      }
+    }
+
+    if (include_row == false) {
+      continue;
+    }
+
+    // Due to the continue statements added above, it shouldn't be
+    // necessary to check whether include_row is true before
+    // running the following code.
+
     // std::cout << "Checkpoint B.";
     // Combining index fields into a single string that can serve
     // as a dictionary key:
@@ -460,6 +657,13 @@ mtt_pivot_table(Multi_Type_Table &mtt,
     valarray_index++;
   }
 
+  auto function_end_time = std::chrono::high_resolution_clock::now();
+  auto function_run_time =
+      std::chrono::duration<double>(function_end_time - function_start_time)
+          .count();
+  std::cout << "Finished running pivot_mtt with a " << mtt.length
+            << "-row dataset in " << function_run_time << " seconds.\n";
+
   return pivot_mtt;
 }
 
@@ -498,7 +702,9 @@ void print_mtt(Multi_Type_Table mtt, long n, char print_separator) {
   else // Making sure we don't attempt to print more rows than
   // the Multi_Type_Table contains
 
-  {rows_to_print = std::min(long(mtt.length), n);}
+  {
+    rows_to_print = std::min(long(mtt.length), n);
+  }
 
   for (int i = 0; i < rows_to_print; i++)
 
@@ -528,8 +734,7 @@ void print_mtt(Multi_Type_Table mtt, long n, char print_separator) {
   }
 }
 
-void mtt_to_csv(Multi_Type_Table &mtt, 
-  std::string file_path, char delimiter) {
+void mtt_to_csv(Multi_Type_Table &mtt, std::string file_path, char delimiter) {
   // This function exports a Multi_Type_Table to a CSV file.
 
   // delimiter specifies which character to use to separate
@@ -542,6 +747,8 @@ void mtt_to_csv(Multi_Type_Table &mtt,
   // This is meant to help speed up
   // the function, as it will reduce the number of checks needed
   // to determine in which typed valarray a given field lies.
+
+  auto function_start_time = std::chrono::high_resolution_clock::now();
 
   std::vector<std::string> csv_data{
       size_t(mtt.length + 1)}; // All values will need to
@@ -672,4 +879,11 @@ void mtt_to_csv(Multi_Type_Table &mtt,
 
     ofs << csv_data[i];
   }
+
+  auto function_end_time = std::chrono::high_resolution_clock::now();
+  auto function_run_time =
+      std::chrono::duration<double>(function_end_time - function_start_time)
+          .count();
+  std::cout << "Finished running mtt_to_csv with a " << mtt.length
+            << "-row dataset in " << function_run_time << " seconds.\n";
 }

@@ -22,59 +22,82 @@ Other references will be mentioned within the codebase.
 To do:
 
 1. Create a new csv_to_vvs function within 
-simple_csv_import_export.cpp, then move your corresponding
+mtt.cpp, then move your corresponding
 code within this file into it.
 
-1. Make it possible to include and exclude certain column values.
-You can do so by specifying lists of such values within your 
-configuration file, then adding two maps of string/vector pairs,
-one for the inclusion list and another for the exclusion lists.
-The vectors will contain lists of items to include or exclude
-for each variable.
-You can add these items to the configuration file as follows:
+2. Also convert your config-file-parsing code into a function, 
+then move it to mtt.cpp as well. (It will be useful to keep
+all functions used for MTT processing, even if they don't
+directly involve MTTs, within the same header file.)
 
-Field 1: variable name (i.e. items_to_include or items_to_exclude)
-Field 2: Field 
-Field 3: Field value for inclusion/exclusion to add to this field's
-vector
+3. Update your csv_to_mtt table as follows: 
 
-Next, update your configuration-import script to add, for each 
-variable in field 2, all items in field 3 to a vector of strings.
+  a. Update your first-row script so that it stores all columns,
+  rather than just those you want to add to your MTT, into a map
+  of string/string pairs. (This will allow you to filter rows
+  based on values that won't actually get added into your MTT.
+  You should still only add fields into mtt.field_order that will
+  actually get included within the MTT, though.)
 
+  b. Have the function read, for each row, all field/value 
+  pairs into a string/string map.
+  
+  c. Add maps of string/set pairs that will let you determine, based
+  on whether variables within a given row include/do not include
+  certain values, which rows to include. (You can base this code
+  off the include/exclude maps within your pivot-configuration setup,
+  except that you'll only need two (string-typed) values, since
+  all of the data you're importing will originally be in string format.
 
-1. Add additional documentation, particularly for the configuration
-file. (Also note that if you ever needed to add in maps of string/vector
-pairs, you could do so by adding in 3 columns: the first for the variable
-name, the second for a key, and the third for one of the values
-for the vector corresponding to that key.)
+  d. Use these maps to determine whether or not to include a particular
+  row.
+  
+  c. For rows that *will* get included based on these filters:
+  Use the string/string-map representation of the row's data
+  to add items into your MTT. You can do so by iterating through
+  all field name/valarray pairs within your MTT's df, lf, intf,
+  and stf attributes, then adding the value in the row corresponding
+  to a given field-name key into the valarray. (Make sure to cast it
+  to that valarray's data type when necessary.)
 
-2. Report the time each function takes to run within this file.
+  d. Keep track of how many rows you've actually added into the
+  MTT. Next, at the end of the function, resize each valarray
+  to that specific number. This will prevent any filter operations
+  from resulting in extra rows at the end of each valarray.
 
-3. Add code to mtt_pivot_table that uses vector division
+  )
+
+4. Add additional documentation, particularly for the configuration
+file. (Explain that a JSON setup would make more sense, but that 
+you wanted to avoid external headers for this project, both to
+keep it simple and to better learn the principles underlying
+those libraries.)
+
+5. Add code to mtt_pivot_table() that uses vector division
 with this table to calculate means. This may require adding
 additional code that casts long and int values to doubles.
 
-4. Also show how you can add custom fields to a given valarray
+6. Also show how you can add custom fields to a given valarray
 (such as the output of pivot_mtt). This would involve accessing
 a certain set of config data (e.g. config_map[0]); running
 pivot_mtt; adding additional fields within the script; then exporting
 the results to a separate .csv file.)
 
-5. Compare how long your code takes to run via your two different
+7. Compare how long your code takes to run via your two different
 approaches to storing pivot-table data
 (i.e. as a struct of maps of valarrays and as a vector
 of string/string maps.)
 
-6. Share pivot-table functions/applications within StackOverflow
+8. Share pivot-table functions/applications within StackOverflow
 post that asked about using C++ for pivot tables (but mention its
 limitations, together with better alternatives like
 the DataFrame library and Vicent La's library)
 
-7. Add in some equivalent Python code in order to (1) check your
+9. Add in some equivalent Python code in order to (1) check your
 output and (2) compare speeds. (Chances are the Python code will
 be faster, given that Pandas uses Numpy under the hood)
 
-8. Compile the code to assembly to see what the output looks like
+10. Compile the code to assembly to see what the output looks like.
 
 */
 
@@ -151,6 +174,25 @@ bool calculate_means;
   std::string table_file_path {"pivot_file.csv"}; // This value should
   // be overridden within config.csv in order to prevent subsequent
   // pivot tables from overwriting previous ones.
+
+  // The following eight maps specify values of various types 
+  // to include or exclude from this pivot table. Map keys
+  // are variable names, and map values are sets of values
+  // to either include or exclude. (Using sets here, rather 
+  // than vectors, should help speed up the code somewhat.)
+  std::map<std::string,std::set<std::string>> string_vals_to_include {};
+  std::map<std::string,std::set<std::string>> string_vals_to_exclude {};
+
+    std::map<std::string,std::set<double>> double_vals_to_include {};
+  std::map<std::string,std::set<double>> double_vals_to_exclude {};
+
+    std::map<std::string,std::set<int>> int_vals_to_include {};
+  std::map<std::string,std::set<int>> int_vals_to_exclude {};
+
+    std::map<std::string,std::set<long>> long_vals_to_include {};
+  std::map<std::string,std::set<long>> long_vals_to_exclude {};
+
+
 };
 
 // The following map will hold configuration data for one or more
@@ -239,6 +281,38 @@ std::map<int, Pivot_Config> config_map {};
       config_map[pivot_index].int_value_fields.push_back(vs[2]);
     }
 
+
+      else if (vs[1] == "string_vals_to_include") {
+      config_map[pivot_index].string_vals_to_include[vs[2]].insert(vs[3]);
+    }
+
+          else if (vs[1] == "string_vals_to_exclude") {
+      config_map[pivot_index].string_vals_to_exclude[vs[2]].insert(vs[3]);
+    }
+
+      else if (vs[1] == "int_vals_to_include") {
+      config_map[pivot_index].int_vals_to_include[vs[2]].insert(stoi(vs[3]));
+    }
+
+      else if (vs[1] == "int_vals_to_exclude") {
+      config_map[pivot_index].int_vals_to_exclude[vs[2]].insert(stoi(vs[3]));
+      }
+
+      else if (vs[1] == "double_vals_to_include") {
+      config_map[pivot_index].double_vals_to_include[vs[2]].insert(stod(vs[3]));
+    }
+
+      else if (vs[1] == "double_vals_to_exclude") {
+      config_map[pivot_index].double_vals_to_exclude[vs[2]].insert(stod(vs[3]));
+      }
+  
+      else if (vs[1] == "long_vals_to_include") {
+      config_map[pivot_index].long_vals_to_include[vs[2]].insert(stol(vs[3]));
+    }
+
+      else if (vs[1] == "long_vals_to_exclude") {
+      config_map[pivot_index].long_vals_to_exclude[vs[2]].insert(stol(vs[3]));
+      }
 
     else if (vs[1] == "table_file_path") // In this case, vs[0] will be
     // a configuration key, and vs[1] will be its corresponding
@@ -339,8 +413,22 @@ std::cout << "Table file path:\t" << pc.table_file_path << "\n";
 
 
   Multi_Type_Table pivot_mtt =
-      mtt_pivot_table(csv_mtt, pc.index_fields, pc.double_value_fields,
-                      pc.long_value_fields, pc.int_value_fields);
+      mtt_pivot_table(csv_mtt, pc.index_fields, 
+        pc.double_value_fields,
+        pc.long_value_fields, 
+        pc.int_value_fields,
+      '|', // We could also update the code to allow the user
+      // to select this option.
+      pc.calculate_means,
+    pc.string_vals_to_include,
+  pc.string_vals_to_exclude,
+pc.int_vals_to_include,
+pc.int_vals_to_exclude,
+pc.double_vals_to_include,
+pc.double_vals_to_exclude,
+pc.long_vals_to_include,
+pc.long_vals_to_exclude);
+      // );
 
   // Testing out the addition of a new field:
   // (This sort of operation is much easier to do with

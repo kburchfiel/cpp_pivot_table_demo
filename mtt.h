@@ -11,6 +11,7 @@ Released under the MIT license */
 #include <fstream>
 #include <iostream>
 #include <sstream>
+#include <chrono>
 
 
 struct Multi_Type_Table {
@@ -85,7 +86,18 @@ std::vector<std::string> const double_value_fields = {},
 std::vector<std::string> const long_value_fields = {},
 std::vector<std::string> const int_value_fields = {},
 char pivot_index_separator = '|',
-bool calculate_means = false);
+bool calculate_means = false,
+    std::map<std::string, std::set<std::string>> string_vals_to_include = {},
+    std::map<std::string, std::set<std::string>> string_vals_to_exclude = {},
+
+    std::map<std::string, std::set<int>> int_vals_to_include = {},
+    std::map<std::string, std::set<int>> int_vals_to_exclude = {},
+
+    std::map<std::string, std::set<double>> double_vals_to_include = {},
+    std::map<std::string, std::set<double>> double_vals_to_exclude = {},
+
+    std::map<std::string, std::set<long>> long_vals_to_include = {},
+    std::map<std::string, std::set<long>> long_vals_to_exclude = {});
 
 void print_mtt(Multi_Type_Table mtt, 
 long n = 0, char print_separator = '\t');

@@ -36,7 +36,7 @@
     */
   
 
-
+auto function_start_time = std::chrono::high_resolution_clock::now();
 
   /* Determining the header row for the pivot table (which will prove
   useful for CSV exports): */
@@ -139,6 +139,14 @@
       }
     }
   }
+
+
+  auto function_end_time = std::chrono::high_resolution_clock::now();
+  auto function_run_time =
+      std::chrono::duration<double>(function_end_time - function_start_time)
+          .count();
+  std::cout << "Finished processing the " << vmss_data.size() << "-row dataset in "
+            << function_run_time << " seconds.\n";
 
 
     return  std::pair<std::map<std::string, std::map<std::string, 

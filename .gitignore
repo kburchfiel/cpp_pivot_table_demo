@@ -2,3 +2,7 @@ iplog
 pivot_demo
 Older_Files/
 lines_of_code_tally.sh
+mtt.s
+pivot_demo.s
+pivot_functions.s
+simple_csv_import_export.s
