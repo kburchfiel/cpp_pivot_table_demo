@@ -4,10 +4,12 @@ Released under the MIT license */
 
 #include "mtt.h"
 
-Multi_Type_Table csv_to_mtt(std::string file_path,
-                            std::map<std::string, std::string> field_type_map,
-                            std::set<std::string> fields_to_import,
-                            char delimiter) {
+Multi_Type_Table
+csv_to_mtt(std::string file_path,
+           std::map<std::string, std::string> field_type_map,
+           std::set<std::string> fields_to_import, char delimiter,
+           std::map<std::string, std::set<std::string>> csv_vals_to_include,
+           std::map<std::string, std::set<std::string>> vals_to_exclude) {
   /* This function imports CSV-file data into an MTT object.
 
   // field_type_map stores field names as keys and your desired
@@ -29,6 +31,14 @@ Multi_Type_Table csv_to_mtt(std::string file_path,
   Meanwhile, for .tsv (tab-separated) files, a delimiter of '\t' should work
   well (as long, again, as there are no tabs within your cell values.)
 
+  // csv_vals_to_include: This map stores field names as keys and sets
+  of field values as values. Only the rows within the CSV file
+  whose field values, for a given variable, are present within
+  that variable's set of field values will get included.
+
+  // vals_to_exclude: Similar to csv_vals_to_include, except that
+  only those rows whose values are *not* present within a given
+  field's set of values will get included.
 
   */
 
@@ -64,13 +74,17 @@ Multi_Type_Table csv_to_mtt(std::string file_path,
   }
 
   // Reopening the file so that we can get back to its beginning:
-  // (There could very well be a more efficient way to do so.)
+  // (There could very well be a more efficient way to take this step.)
   std::ifstream stfs{file_path};
   // if(!stfs) throw("Failed to open input file.");
 
-  std::map<int, std::string> col_indices; // This map will
+  std::map<int, std::string> selected_col_indices; // This map will
   // make it easier to look up the field associated with each
   // column index within the CSV file.
+
+  std::map<int, std::string> all_col_indices; // This map will contain
+  // all indices of all headers, rather than only the ones we wish
+  // to import.
 
   // The following vector of maps will store all rows of our .csv file
   // (aside from the header row).
@@ -83,6 +97,14 @@ Multi_Type_Table csv_to_mtt(std::string file_path,
   // the first actual value row (i.e. the first row below the header
   // row) to have a row_index value of 0--which will come in handy
   // when using this value as a valarray index.)
+  // (Note: Now that I'm using a separate variable (valarray_row_index)
+  // for valarray indices, the code could probably be updated
+  // to have row_index start at 0.)
+
+  int valarray_row_index = 0; // If not all rows are getting added,
+  // we'll need to keep track of both our overall row index
+  // (for the CSV file) and the number of rows we've added
+  // (for use as an index within our valarrays).
 
   for (std::string row; getline(stfs, row);) {
     // std::cout << "Row:" << row << "\n";
@@ -111,13 +133,17 @@ Multi_Type_Table csv_to_mtt(std::string file_path,
 
       int col_index = 0;
       for (std::string field_name; getline(first_row, field_name, delimiter);) {
+
+        all_col_indices[col_index] = field_name; // All fields
+        // will get added into all_col_indices.
+
         // Adding this column name, together with its index,
-        // to col_indices (if instructed to do so by the caller):
+        // to selected_col_indices (if instructed to do so by the caller):
         if ((fields_to_import.empty()) ||
             (fields_to_import.contains(field_name)))
 
         {
-          col_indices[col_index] = field_name;
+          selected_col_indices[col_index] = field_name;
           // Adding this column name to mtt's field-order vector:
           mtt.field_order.push_back(field_name);
 
@@ -152,13 +178,11 @@ Multi_Type_Table csv_to_mtt(std::string file_path,
           else if (field_type_map[field_name] == "int") {
             std::valarray<int> va(mtt.length);
 
-
             mtt.intf[field_name] = va;
           }
 
           else if (field_type_map[field_name] == "long") {
             std::valarray<long> va(mtt.length);
-
 
             mtt.lf[field_name] = va;
           }
@@ -168,7 +192,7 @@ Multi_Type_Table csv_to_mtt(std::string file_path,
         }
         col_index++; // It's crucial to keep this outside the previous
         // if statement; otherwise, columns may get matched
-        // to the wrong index within col_indices.
+        // to the wrong index within selected_col_indices.
       }
 
     }
@@ -182,53 +206,148 @@ Multi_Type_Table csv_to_mtt(std::string file_path,
       std::istringstream current_row;
       current_row.str(row);
 
-      int col_index = 0;
+      bool include_row = true;
 
-      for (std::string field_val; getline(current_row, field_val, delimiter);) {
-        // Checking whether the current index is part of our list
-        // of indices to include:
-        // std::cout << "Column:" << field_val << "\n";
-        // std::cout << "col_index:" << col_index << "\n";
 
-        // std::cout << "Row index: " << row_index << " col_index: " <<
-        // col_index
-        //           << " field_val: " << field_val << "\n";
-        if (col_indices.contains(
-                col_index)) { // Adding this value to the column's dedicated
+int col_index = 0;
+        std::map<std::string, std::string> row_map;
+        for (std::string field_val; getline(current_row, field_val, delimiter);)
+        // We'll import all fields within this row (including those that
+        // won't get added into our valarray, as they might still show up
+        // in our include/exclude criteria) into a map of field/value
+        // pairs. We can then iterate through our vals_to_exclude and
+        // csv_vals_to_include maps to determine whether a particular row
+        // should get included or excluded.)
+        {
+          row_map[all_col_indices[col_index]] = field_val;
+          col_index++;
+        }
+
+      // Determining whether this particular row should get included:
+
+      if ((vals_to_exclude.size() > 0) || (csv_vals_to_include.size() > 0)) {
+        
+        // We'll now iterate through each set of variables and variable
+        // values within string_vals_to_include. If we find that a row's
+        // value for a particular variable is not listed within the
+        // set of values to include, our include_row flag will be set
+        // to false.
+
+        for (auto &[variable, vals] : csv_vals_to_include) {
+          // Since all headers within the CSV file are present
+          // within row_map, we won't need to first check whether
+          // row_map contains the current variable within our loop.
+          if (vals.contains(row_map[variable]) == false) {
+            include_row = false;
+            break;
+          }
+        }
+
+        // There's no need to run the following include/exclude checks
+        // if include_row is already false. Instead, we should
+        // move to the next row of the CSV file within the for loop.
+        if (include_row == false) {
+          continue;
+        }
+
+        // Using a similar setup for vals_to_exclude:
+
+        for (auto &[variable, vals] : vals_to_exclude) {
+          // Since all headers within the CSV file are present
+          // within row_map, we won't need to first check whether
+          // row_map contains the current variable within our loop.
+          if (vals.contains(row_map[variable]) == true) {
+            include_row = false;
+            break;
+          }
+        }
+
+        if (include_row == false) {
+          continue;
+        }
+
+        // Due to the continue statements added above, it shouldn't be
+        // necessary to check whether include_row is true before
+        // running the following code.
+      }
+
+      // We'll now import all values within this row whose 
+      // corresponding headers are located into mtt.field_order
+      // into our Multi_Type_Table.
+      for (std::string field_name : mtt.field_order) 
+ {
+     // Adding this value to the column's dedicated
                               // valarray (and
           // converting it to the proper type beforehand if necessary):
-
-          std::string field_name = col_indices[col_index];
 
           // Any items that don't have a specified type are assumed
           // to be strings.
           if (field_type_map.contains(field_name) == false) {
 
-            mtt.stf[field_name][row_index] = field_val;
+            mtt.stf[field_name][valarray_row_index] = row_map[field_name];
           }
 
           else if (field_type_map[field_name] == "string") {
-            mtt.stf[field_name][row_index] = field_val;
+            mtt.stf[field_name][valarray_row_index] = row_map[field_name];
           }
 
           else if (field_type_map[field_name] == "double") {
-            mtt.df[field_name][row_index] = std::stod(field_val);
+            mtt.df[field_name][valarray_row_index] = std::stod
+            (row_map[field_name]);
           }
 
           else if (field_type_map[field_name] == "int") {
-            mtt.intf[field_name][row_index] = std::stoi(field_val);
+            mtt.intf[field_name][valarray_row_index] = std::stoi(
+              row_map[field_name]);
           }
 
           else if (field_type_map[field_name] == "long") {
-            mtt.lf[field_name][row_index] = std::stol(field_val);
+            mtt.lf[field_name][valarray_row_index] = std::stol(
+              row_map[field_name]);
           };
-        }
-
-        col_index++;
       }
+
+      valarray_row_index++; // This variable should only be incremented
+      // when adding a given row into our valarrays.
     }
-    row_index++;
+    row_index++; // This variable should be incremented for all CSV rows.
   }
+
+std::cout << "Number of rows within Multi_Type_Table: " << valarray_row_index << "\n";
+std::cout << "Number of CSV rows processed: " << row_index << "\n";
+
+
+// If we requested any filter operations, it's likely that the 
+// valarrays have fewer actual entries than their size makes room
+// for. Therefore, we'll go ahead and resize these valarrays
+// in order to exclude any blank entries.
+
+// Note: Because we incremented valarray_row_index by 1, it will
+// currently represent the total number of valid elements rather
+// than the actual final index. Therefore, we can use it to specify
+// the ideal size of each valarray in light of our filter
+// operations.
+
+// (See https://en.cppreference.com/cpp/numeric/valarray/slice
+// for more details on std::slice.)
+
+if ((vals_to_exclude.size() > 0) || (csv_vals_to_include.size() > 0)) {
+
+mtt.length = valarray_row_index;
+
+for (auto&[field, field_map]: mtt.stf)
+{mtt.stf[field] = mtt.stf[field][std::slice(0, mtt.length, 1)];}
+
+for (auto&[field, field_map]: mtt.lf)
+{mtt.lf[field] = mtt.lf[field][std::slice(0, mtt.length, 1)];}
+
+for (auto&[field, field_map]: mtt.intf)
+{mtt.intf[field] = mtt.intf[field][std::slice(0, mtt.length, 1)];}
+
+for (auto&[field, field_map]: mtt.df)
+{mtt.df[field] = mtt.df[field][std::slice(0, mtt.length, 1)];}
+
+}
 
   auto function_end_time = std::chrono::high_resolution_clock::now();
   auto function_run_time =

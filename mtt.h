@@ -66,7 +66,9 @@ struct Multi_Type_Table {
 Multi_Type_Table csv_to_mtt(std::string file_path,
                             std::map<std::string, std::string> field_type_map,
                             std::set<std::string> fields_to_import = {},
-                            char delimiter = ',');
+                            char delimiter = ',',
+    std::map<std::string, std::set<std::string>> csv_vals_to_include = {},
+    std::map<std::string, std::set<std::string>> csv_vals_to_exclude = {});
 
 struct Pivot_Row {
 
