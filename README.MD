@@ -1,6 +1,7 @@
 # C++ Pivot Table Demo
 
 By Ken Burchfiel
+
 Released under the MIT License
 
 This project, which is a rough work in progress and **not** meant for actual production use, demonstrates how C++ can be used to create pivot tables of data stored in CSV files. The code allows for the creation of pivot tables with an arbitrary number of both index and value fields, and also allows certain rows to get filtered out from both the CSV import and individual pivot tables. However, it currently supports a limited number of data types (i.e. integers, longs, doubles, and strings); in addition, it only supports sum, count, and mean operations.
