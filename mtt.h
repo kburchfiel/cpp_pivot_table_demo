@@ -63,13 +63,6 @@ struct Multi_Type_Table {
   std::map<std::string, std::valarray<double>> df{};
 };
 
-Multi_Type_Table csv_to_mtt(std::string file_path,
-                            std::map<std::string, std::string> field_type_map,
-                            std::set<std::string> fields_to_import = {},
-                            char delimiter = ',',
-    std::map<std::string, std::set<std::string>> csv_vals_to_include = {},
-    std::map<std::string, std::set<std::string>> csv_vals_to_exclude = {});
-
 struct Pivot_Row {
 
   // This struct will hold pivot-table data for a given pivot index.
@@ -80,6 +73,74 @@ struct Pivot_Row {
   std::map<std::string, double> df{};
   std::map<std::string, long> lf{};
 };
+
+
+struct Import_Config {
+
+// This struct holds relevant values for importing a CSV file into
+// a Multi_Type_Table (and likely other data formats as well).
+
+  std::string data_file_path;
+  std::map<std::string, std::string> field_type_map{};
+  std::set<std::string> fields_to_import{};
+  char delimiter = ',';
+
+    // The following two maps specify values
+    // to include or exclude when importing CSV data. Map keys
+    // are variable names, and map values are sets of values
+    // to either include or exclude. (Using sets here, rather
+    // than vectors, should help speed up the code somewhat.)
+
+  std::map<std::string, std::set<std::string>> csv_vals_to_include{};
+  std::map<std::string, std::set<std::string>> csv_vals_to_exclude{};
+};
+
+
+
+  struct Pivot_Config {
+
+
+  // This struct holds pivot-table-specific configuration variables.
+
+    bool calculate_means;
+    std::vector<std::string> index_fields{};
+    std::vector<std::string> double_value_fields{};
+    std::vector<std::string> long_value_fields{};
+    std::vector<std::string> int_value_fields{};
+    std::string table_file_path{"pivot_file.csv"}; // This value should
+    // be overridden within config.csv in order to prevent subsequent
+    // pivot tables from overwriting previous ones.
+
+    // The following eight maps specify values of various types
+    // to include or exclude from this pivot table. Map keys
+    // are variable names, and map values are sets of values
+    // to either include or exclude.
+    std::map<std::string, std::set<std::string>> string_vals_to_include{};
+    std::map<std::string, std::set<std::string>> string_vals_to_exclude{};
+
+    std::map<std::string, std::set<double>> double_vals_to_include{};
+    std::map<std::string, std::set<double>> double_vals_to_exclude{};
+
+    std::map<std::string, std::set<int>> int_vals_to_include{};
+    std::map<std::string, std::set<int>> int_vals_to_exclude{};
+
+    std::map<std::string, std::set<long>> long_vals_to_include{};
+    std::map<std::string, std::set<long>> long_vals_to_exclude{};
+  };
+
+  std::pair<Import_Config, std::map<int, Pivot_Config>> import_config_data(
+  std::vector<std::vector<std::string>> & vvs);
+
+
+
+
+Multi_Type_Table csv_to_mtt(std::string file_path,
+                            std::map<std::string, std::string> field_type_map,
+                            std::set<std::string> fields_to_import = {},
+                            char delimiter = ',',
+    std::map<std::string, std::set<std::string>> csv_vals_to_include = {},
+    std::map<std::string, std::set<std::string>> csv_vals_to_exclude = {});
+
 
 
 Multi_Type_Table mtt_pivot_table(Multi_Type_Table &mtt, 
@@ -106,3 +167,11 @@ long n = 0, char print_separator = '\t');
 
 void mtt_to_csv(Multi_Type_Table &mtt, std::string file_path, 
 char delimiter = ',');
+
+
+std::vector<std::vector<std::string>> csv_to_vvs(
+std::string csv_path);
+
+void print_vvs(std::vector<std::vector<std::string>> &vvs);
+
+void print_pivot_config_data(Pivot_Config& pc);

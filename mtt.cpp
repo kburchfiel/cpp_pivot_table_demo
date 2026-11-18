@@ -208,25 +208,24 @@ csv_to_mtt(std::string file_path,
 
       bool include_row = true;
 
-
-int col_index = 0;
-        std::map<std::string, std::string> row_map;
-        for (std::string field_val; getline(current_row, field_val, delimiter);)
-        // We'll import all fields within this row (including those that
-        // won't get added into our valarray, as they might still show up
-        // in our include/exclude criteria) into a map of field/value
-        // pairs. We can then iterate through our vals_to_exclude and
-        // csv_vals_to_include maps to determine whether a particular row
-        // should get included or excluded.)
-        {
-          row_map[all_col_indices[col_index]] = field_val;
-          col_index++;
-        }
+      int col_index = 0;
+      std::map<std::string, std::string> row_map;
+      for (std::string field_val; getline(current_row, field_val, delimiter);)
+      // We'll import all fields within this row (including those that
+      // won't get added into our valarray, as they might still show up
+      // in our include/exclude criteria) into a map of field/value
+      // pairs. We can then iterate through our vals_to_exclude and
+      // csv_vals_to_include maps to determine whether a particular row
+      // should get included or excluded.)
+      {
+        row_map[all_col_indices[col_index]] = field_val;
+        col_index++;
+      }
 
       // Determining whether this particular row should get included:
 
       if ((vals_to_exclude.size() > 0) || (csv_vals_to_include.size() > 0)) {
-        
+
         // We'll now iterate through each set of variables and variable
         // values within string_vals_to_include. If we find that a row's
         // value for a particular variable is not listed within the
@@ -271,40 +270,39 @@ int col_index = 0;
         // running the following code.
       }
 
-      // We'll now import all values within this row whose 
+      // We'll now import all values within this row whose
       // corresponding headers are located into mtt.field_order
       // into our Multi_Type_Table.
-      for (std::string field_name : mtt.field_order) 
- {
-     // Adding this value to the column's dedicated
-                              // valarray (and
-          // converting it to the proper type beforehand if necessary):
+      for (std::string field_name : mtt.field_order) {
+        // Adding this value to the column's dedicated
+        // valarray (and
+        // converting it to the proper type beforehand if necessary):
 
-          // Any items that don't have a specified type are assumed
-          // to be strings.
-          if (field_type_map.contains(field_name) == false) {
+        // Any items that don't have a specified type are assumed
+        // to be strings.
+        if (field_type_map.contains(field_name) == false) {
 
-            mtt.stf[field_name][valarray_row_index] = row_map[field_name];
-          }
+          mtt.stf[field_name][valarray_row_index] = row_map[field_name];
+        }
 
-          else if (field_type_map[field_name] == "string") {
-            mtt.stf[field_name][valarray_row_index] = row_map[field_name];
-          }
+        else if (field_type_map[field_name] == "string") {
+          mtt.stf[field_name][valarray_row_index] = row_map[field_name];
+        }
 
-          else if (field_type_map[field_name] == "double") {
-            mtt.df[field_name][valarray_row_index] = std::stod
-            (row_map[field_name]);
-          }
+        else if (field_type_map[field_name] == "double") {
+          mtt.df[field_name][valarray_row_index] =
+              std::stod(row_map[field_name]);
+        }
 
-          else if (field_type_map[field_name] == "int") {
-            mtt.intf[field_name][valarray_row_index] = std::stoi(
-              row_map[field_name]);
-          }
+        else if (field_type_map[field_name] == "int") {
+          mtt.intf[field_name][valarray_row_index] =
+              std::stoi(row_map[field_name]);
+        }
 
-          else if (field_type_map[field_name] == "long") {
-            mtt.lf[field_name][valarray_row_index] = std::stol(
-              row_map[field_name]);
-          };
+        else if (field_type_map[field_name] == "long") {
+          mtt.lf[field_name][valarray_row_index] =
+              std::stol(row_map[field_name]);
+        };
       }
 
       valarray_row_index++; // This variable should only be incremented
@@ -313,41 +311,44 @@ int col_index = 0;
     row_index++; // This variable should be incremented for all CSV rows.
   }
 
-std::cout << "Number of rows within Multi_Type_Table: " << valarray_row_index << "\n";
-std::cout << "Number of CSV rows processed: " << row_index << "\n";
+  std::cout << "Number of rows within Multi_Type_Table: " << valarray_row_index
+            << "\n";
+  std::cout << "Number of CSV rows processed: " << row_index << "\n";
 
+  // If we requested any filter operations, it's likely that the
+  // valarrays have fewer actual entries than their size makes room
+  // for. Therefore, we'll go ahead and resize these valarrays
+  // in order to exclude any blank entries.
 
-// If we requested any filter operations, it's likely that the 
-// valarrays have fewer actual entries than their size makes room
-// for. Therefore, we'll go ahead and resize these valarrays
-// in order to exclude any blank entries.
+  // Note: Because we incremented valarray_row_index by 1, it will
+  // currently represent the total number of valid elements rather
+  // than the actual final index. Therefore, we can use it to specify
+  // the ideal size of each valarray in light of our filter
+  // operations.
 
-// Note: Because we incremented valarray_row_index by 1, it will
-// currently represent the total number of valid elements rather
-// than the actual final index. Therefore, we can use it to specify
-// the ideal size of each valarray in light of our filter
-// operations.
+  // (See https://en.cppreference.com/cpp/numeric/valarray/slice
+  // for more details on std::slice.)
 
-// (See https://en.cppreference.com/cpp/numeric/valarray/slice
-// for more details on std::slice.)
+  if ((vals_to_exclude.size() > 0) || (csv_vals_to_include.size() > 0)) {
 
-if ((vals_to_exclude.size() > 0) || (csv_vals_to_include.size() > 0)) {
+    mtt.length = valarray_row_index;
 
-mtt.length = valarray_row_index;
+    for (auto &[field, field_map] : mtt.stf) {
+      mtt.stf[field] = mtt.stf[field][std::slice(0, mtt.length, 1)];
+    }
 
-for (auto&[field, field_map]: mtt.stf)
-{mtt.stf[field] = mtt.stf[field][std::slice(0, mtt.length, 1)];}
+    for (auto &[field, field_map] : mtt.lf) {
+      mtt.lf[field] = mtt.lf[field][std::slice(0, mtt.length, 1)];
+    }
 
-for (auto&[field, field_map]: mtt.lf)
-{mtt.lf[field] = mtt.lf[field][std::slice(0, mtt.length, 1)];}
+    for (auto &[field, field_map] : mtt.intf) {
+      mtt.intf[field] = mtt.intf[field][std::slice(0, mtt.length, 1)];
+    }
 
-for (auto&[field, field_map]: mtt.intf)
-{mtt.intf[field] = mtt.intf[field][std::slice(0, mtt.length, 1)];}
-
-for (auto&[field, field_map]: mtt.df)
-{mtt.df[field] = mtt.df[field][std::slice(0, mtt.length, 1)];}
-
-}
+    for (auto &[field, field_map] : mtt.df) {
+      mtt.df[field] = mtt.df[field][std::slice(0, mtt.length, 1)];
+    }
+  }
 
   auto function_end_time = std::chrono::high_resolution_clock::now();
   auto function_run_time =
@@ -776,6 +777,63 @@ Multi_Type_Table mtt_pivot_table(
     valarray_index++;
   }
 
+
+  // Calculating means (if requested) by dividing each variable's
+  // sum by its count, then storing these means as an additional
+  // valarray entry within pivot_mtt.df:
+
+  if (calculate_means == true)
+
+  {
+
+    for (int i = 0; i < combined_value_fields.size(); i++) {
+
+      // Creating a double-typed version of this field's count column
+      // by which the field's double-typed sum column can be divided:
+
+      // (Alternatively, we could simply have stored the counts as
+      // doubles to begin with, but there may be some advantages
+      // to keeping them as longs by default--and we won't always
+      // need to create these means.)
+
+    std::valarray<long> counts_valarray = pivot_mtt.lf[
+      combined_value_fields[i] + "_count"];
+
+      std::valarray<double> counts_as_doubles(pivot_mtt.length);
+      
+      for (int j = 0; j < pivot_mtt.length; j++)
+      {
+      // The long-to-double conversion here is implicit.
+      counts_as_doubles[j] = counts_valarray[j];
+
+      }
+
+auto division_start_time = std::chrono::high_resolution_clock::now();
+
+// Note that one valarray can be divided by another, which is
+// a very cool feature (and one not available, say, with vectors).
+// This is the main reason why I chose to use valarrays to store
+// data within Multi_Type_Tables.
+
+      pivot_mtt.df[combined_value_fields[i] + "_mean"] =
+           pivot_mtt.df[
+      combined_value_fields[i] + "_sum"] / counts_as_doubles;    
+
+  auto division_end_time = std::chrono::high_resolution_clock::now();
+  auto division_run_time =
+      std::chrono::duration<double>(division_end_time - division_start_time)
+          .count();
+  std::cout << "Finished calculating " << pivot_mtt.length << 
+  " means in " << division_run_time << " seconds.\n";
+
+pivot_mtt.field_order.push_back(
+  combined_value_fields[i] + "_mean");
+
+
+  }
+  }
+
+
   auto function_end_time = std::chrono::high_resolution_clock::now();
   auto function_run_time =
       std::chrono::duration<double>(function_end_time - function_start_time)
@@ -1005,4 +1063,277 @@ void mtt_to_csv(Multi_Type_Table &mtt, std::string file_path, char delimiter) {
           .count();
   std::cout << "Finished running mtt_to_csv with a " << mtt.length
             << "-row dataset in " << function_run_time << " seconds.\n";
+}
+
+std::vector<std::vector<std::string>> csv_to_vvs(std::string csv_path) {
+  /* This function converts a CSV file into a vector of vectors
+  of strings (or vvs for short). It doesn't treat the first row
+  (which is often the header row) any differently from
+  subsequent rows.
+  This function's code is based in part on csv_to_vmss().
+  */
+
+std::vector<std::vector<std::string>> vvs;
+
+  std::ifstream stfs{csv_path};
+
+  for (std::string row; getline(stfs, row);) {
+    std::vector<std::string> vs{}; // vs = 'vector of strings'
+    std::istringstream current_row;
+    current_row.str(row);
+    for (std::string column; getline(current_row, column, ',');) {
+      vs.push_back(column);
+    }
+    // Adding this vector (which contains data for a single
+    // row) to our vector of vector of strings:
+    vvs.push_back(vs);
+  }
+
+
+  return vvs;
+}
+
+void print_vvs(std::vector<std::vector<std::string>> &vvs)
+
+{
+  /* This function prints out all row/column pairs within a vector
+  of vectors of strings in tab-separated format.*/
+
+
+std::cout << "Length of vvs:" << vvs.size() << "\n";
+
+for (int i = 0; i < vvs.size(); i++) {
+  std::vector<std::string> vs = vvs[i];
+  for (int j = 0; j < vs.size(); j++) {
+    std::cout << vs[j] << "\t";
+  }
+  std::cout << "\n";
+}
+
+}
+
+std::pair<Import_Config, std::map<int, Pivot_Config>>
+import_config_data(std::vector<std::vector<std::string>> &vvs) {
+
+  /* This function imports both import- and pivot-table-related data
+  from a configuration dataset into both an Import_Config struct
+  and a map of int/Pivot_Config pairs. It's assumed that the
+  configuration dataset was imported by csv_to_vvs into a vector of
+  vectors of strings.
+  */
+
+  Import_Config ic;
+
+  // The following map will hold configuration data for one or more
+  // pivot tables. (Using integer-based keys lets us ensure that
+  // pivot tables are created in the numerical order specified
+  // by our key values.)
+
+  std::map<int, Pivot_Config> pcm{}; // pcm is short for
+  // 'pivot config map.'
+
+  // (Adding Pivot_Config structs into a map will allow us to more easily
+  // create multiple pivot tables from the same data source.)
+
+  for (int i = 1; i < vvs.size(); i++) { // The first row is a
+    // header row for users' reference, which we can skip here.
+
+    std::vector<std::string> vs = vvs[i];
+    // The first column of each configuration entry
+    // will specify to which pivot-table configuration
+    // (if any) a particular row applies; the second
+    // column will specify a variable for that configuration;
+    // and subsequent columns will specify one or more values
+    // for that variable.
+    // Note that certain variables may have multiple entries
+    // within the configuration file. This will allow
+    // multiple items (e.g. multiple vector or map values)
+    // to get added in for that file without making
+    // the CSV file wider than necessary.
+
+    if (vs[0] == "Import") // This row contains import-related data.
+
+    {
+
+      if (vs[1] == "data_file_path") // In this case, vs[0] will be
+      // a configuration key, and vs[1] will be its corresponding
+      // value. We can ignore any columns that follow vs[1].
+      {
+        ic.data_file_path = vs[2];
+      }
+
+      else if (vs[1] == "field_type_map") {
+        ic.field_type_map[vs[2]] = vs[3];
+      }
+
+      else if (vs[1] == "delimiter") {
+
+        if (vs[2] == "comma") {
+          ic.delimiter = ',';
+        }
+
+        else if (vs[2] == "tab") {
+          ic.delimiter = '\t';
+        }
+
+        else { // In this case, the first character within vs[2]
+          // will be used as the delimiter.
+
+          ic.delimiter = vs[2][0];
+        }
+      }
+
+      else if (vs[1] == "fields_to_import") {
+        ic.fields_to_import.insert(vs[2]);
+      }
+
+      else if (vs[1] == "csv_vals_to_include") {
+        ic.csv_vals_to_include[vs[2]].insert(vs[3]);
+      }
+
+      else if (vs[1] == "csv_vals_to_exclude") {
+        ic.csv_vals_to_exclude[vs[2]].insert(vs[3]);
+      }
+
+    }
+
+    else // This row contains data for a particular pivot table.
+    {
+      int pivot_index = std::stoi(vs[0]);
+      if (pcm.contains(pivot_index) ==
+          false) { // Adding an entry for this particular pivot index:
+
+        Pivot_Config pc{};
+        pcm[pivot_index] = pc;
+      }
+
+      // Updating a particular pivot table's configuration info
+      // with the data stored in this row:
+      if (vs[1] == "calculate_means") {
+        if (vs[2] == "Y") {
+          pcm[pivot_index].calculate_means = true;
+        } else {
+          pcm[pivot_index].calculate_means = false;
+        }
+      }
+
+      else if (vs[1] == "index_fields") {
+        pcm[pivot_index].index_fields.push_back(vs[2]);
+      }
+
+      else if (vs[1] == "double_value_fields") {
+        pcm[pivot_index].double_value_fields.push_back(vs[2]);
+      }
+
+      else if (vs[1] == "long_value_fields") {
+        pcm[pivot_index].long_value_fields.push_back(vs[2]);
+      }
+
+      else if (vs[1] == "int_value_fields") {
+        pcm[pivot_index].int_value_fields.push_back(vs[2]);
+      }
+
+      else if (vs[1] == "string_vals_to_include") {
+        pcm[pivot_index].string_vals_to_include[vs[2]].insert(vs[3]);
+      }
+
+      else if (vs[1] == "string_vals_to_exclude") {
+        pcm[pivot_index].string_vals_to_exclude[vs[2]].insert(vs[3]);
+      }
+
+      else if (vs[1] == "int_vals_to_include") {
+        pcm[pivot_index].int_vals_to_include[vs[2]].insert(stoi(vs[3]));
+      }
+
+      else if (vs[1] == "int_vals_to_exclude") {
+        pcm[pivot_index].int_vals_to_exclude[vs[2]].insert(stoi(vs[3]));
+      }
+
+      else if (vs[1] == "double_vals_to_include") {
+        pcm[pivot_index].double_vals_to_include[vs[2]].insert(stod(vs[3]));
+      }
+
+      else if (vs[1] == "double_vals_to_exclude") {
+        pcm[pivot_index].double_vals_to_exclude[vs[2]].insert(stod(vs[3]));
+      }
+
+      else if (vs[1] == "long_vals_to_include") {
+        pcm[pivot_index].long_vals_to_include[vs[2]].insert(stol(vs[3]));
+      }
+
+      else if (vs[1] == "long_vals_to_exclude") {
+        pcm[pivot_index].long_vals_to_exclude[vs[2]].insert(stol(vs[3]));
+      }
+
+      else if (vs[1] == "table_file_path") // In this case, vs[0] will be
+      // a configuration key, and vs[1] will be its corresponding
+      // value. We can ignore any columns that follow vs[1].
+      {
+        pcm[pivot_index].table_file_path = vs[2];
+      }
+    }
+  }
+
+
+  std::cout << "Import configuration info:\n";
+  std::cout << "Data file path:\t" << ic.data_file_path << "\n";
+  std::cout << "delimiter:\t" << ic.delimiter << "\n";
+  std::cout << "field_type_map:\t";
+
+  for (auto &[field_name, field_type] : ic.field_type_map) {
+    std::cout << field_name << ": " << field_type << "\t";
+  }
+  std::cout << "\n";
+
+  std::cout << "fields_to_import:\t";
+  for (std::string field : ic.fields_to_import) {
+    std::cout << field << "\t";
+  }
+  std::cout << "\n";
+
+
+
+  std::pair<Import_Config, std::map<int, 
+  Pivot_Config>> ic_pcm {ic, pcm};
+
+  return ic_pcm;
+}
+
+
+void print_pivot_config_data(Pivot_Config& pc)
+{
+
+  // This function prints out selected configuration information
+  // from a Pivot_Config object.
+    std::cout << "calculate_means:\t" << pc.calculate_means << "\n";
+
+    // Range for loop:
+    std::cout << "index_fields:\t";
+    for (std::string field : pc.index_fields) {
+      std::cout << field << "\t";
+    }
+
+    // Older alternative to range for loops:
+    std::cout << "\n";
+    std::cout << "double_value_fields:\t";
+    for (int i = 0; i < pc.double_value_fields.size(); i++) {
+      std::cout << pc.double_value_fields[i] << "\t";
+    }
+    std::cout << "\n";
+
+    // You also don't need to specify the value type within
+    // range for loops:
+    std::cout << "long_value_fields:\t";
+    for (auto field : pc.long_value_fields) {
+      std::cout << field << "\t";
+    }
+    std::cout << "\n";
+    std::cout << "int_value_fields:\t";
+
+    for (auto field : pc.int_value_fields) {
+      std::cout << field << "\t";
+    }
+    std::cout << "\n";
+
+    std::cout << "Table file path:\t" << pc.table_file_path << "\n";
 }
