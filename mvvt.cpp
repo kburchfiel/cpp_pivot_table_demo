@@ -17,6 +17,7 @@ writing that function!
 // Adding some type aliases in order to cut down on the amount
 // of typing needed to do when accessing a valarray of a certain
 // type:
+// (See https://en.cppreference.com/cpp/language/type_alias)
 
 using sva = std::valarray<std::string>; // sva is short for
 // 'string valarray'.
