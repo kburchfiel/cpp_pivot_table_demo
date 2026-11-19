@@ -50,8 +50,7 @@ csv_to_mtt(std::string file_path,
   auto function_start_time = std::chrono::high_resolution_clock::now();
 
   Multi_Type_Table
-      mtt{}; // mtto = 'MTT object. I probably could have just gone with \
-  'mtt' also.
+      mtt{}; 
 
   int row_count = 0;
 

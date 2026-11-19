@@ -36,63 +36,44 @@ To make use of this code for your own work:
 
 ### To-dos
 
-1. Create a new csv_to_vvs function within
-mtt.cpp, then move your corresponding
-code within this file into it.
+1. Continue building out your mvvt_cpp and mvvt_h code as alternatives
+to your Multi-Type Table based approach. Test the time these functions
+take to your mtt-based code in order to figure out whether using
+variants slows the program down at all.
 
-2. Also convert your config-file-parsing code into a function,
-then move it to mtt.cpp as well. (It will be useful to keep
-all functions used for MTT processing, even if they don't
-directly involve MTTs, within the same header file.) In order to
-return all the configuration data parsed by the function, you'll
-probably want to define a struct that can store config data. 
-You'd then return both your CSV-import struct and your map of
-int/Pivot_Config values within a tuple or std::pair.
 
-3. Move additional structs and functions from pivot_demo.cpp
-into mtt.cpp as needed, thus reducing the amount of code you need
-to include within each use of mtt.cpp.
-
-4. Move your non-MTT code at the end into a separate .cpp file
-that will also show how to modify/create new valarrays within
-an existing MTT.
-
-4. Add additional documentation, particularly for the configuration
+2. Add additional documentation, particularly for the configuration
 file. (Explain that a JSON setup would make more sense, but that
 you wanted to avoid external headers for this project, both to
 keep it simple and to better learn the principles underlying
 those libraries.)
 
-5. Add code to mtt_pivot_table() that uses vector division
-with this table to calculate means. This may require adding
-additional code that casts long and int values to doubles.
-
-6. Also show how you can add custom fields to a given valarray
+3. Also show how you can add custom fields to a given valarray
 (such as the output of pivot_mtt). This would involve accessing
 a certain set of config data (e.g. pcm[0]); running
 pivot_mtt; adding additional fields within the script; then exporting
 the results to a separate .csv file.)
 
-7. Try out a map of string/valarray-variant pairs as an alternative
-to a Multi-Type Table. Your variants could include int, string,
-double, and long valarrays. It would help to have both a vector
-that specifies your preferred column order *and* a string/set map
-whose keys are type names and whose values are sets of all of the fields
-that use that type. (This should cut down on the number of times that
-you'd need to check what kind of type a particular valarray contains,
-as when you iterate through these maps, you'd know which type you're
-working with and thus wouldn't have to try out different options.)
 
-7. Compare how long your code takes to run via your two different
-approaches to storing pivot-table data
-(i.e. as a struct of maps of valarrays and as a vector
-of string/string maps.)
-
-8. Share pivot-table functions/applications within StackOverflow
+4. Share pivot-table functions/applications within StackOverflow
 post that asked about using C++ for pivot tables (but mention its
 limitations, together with better alternatives like
 the DataFrame library and Vicent La's library)
 
-9. Add in some equivalent Python code in order to (1) check your
+5. Add in some equivalent Python code in order to (1) check your
 output and (2) compare speeds. (Chances are the Python code will
 be faster, given that Pandas uses Numpy under the hood)
+
+6. See if it's possible to define the [] operator for MVV_Table objects
+such that mvvt[] = mvvt.mvv[] (which would save you a few keypresses).
+
+7. Consider creating a "giva" (get integer valarray) function that
+would translate giva(mvvt, "Field") into get<iva>(mvvt.mvv["Field"]).
+This would further reduce the number of keystrokes you need to enter
+for these sorts of operations. (However, test out this approach
+to see whether this additional function would slow your program down.
+
+And consider that, if you manage to overload the [] operator for
+MVV_Table objects, you could then enter get<iva>(mvvt["Field"]) for
+this type of operation, at whicth point the giva() setup wouldn't
+be that much shorter in length.
