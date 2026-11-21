@@ -6,3 +6,4 @@ pivot_demo.s
 pivot_functions.s
 simple_csv_import_export.s
 create_pivot_tables
+mvvt_create_pivot_tables

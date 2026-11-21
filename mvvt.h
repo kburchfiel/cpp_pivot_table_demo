@@ -20,6 +20,63 @@ mtt.h.*/
 #include <variant>
 
 
+
+
+struct MVV_Table {
+/* MVV stands for 'Map of Variant of Valarrays,' the data type 
+that we'll use to store our table data. */
+
+std::map<std::string, std::variant<std::valarray<std::string>,
+std::valarray<double>, std::valarray<long>,
+std::valarray<int>>> mvv {};
+
+std::map<std::string, std::set<std::string>> tm { {"string", {}},
+{"int", {}}, {"long", {}}, {"double", {}}};
+// tm stands for 'type map.' This attribute stores type names
+// as strings and valarray field names as values. This will help
+// reduce the amount of 'guessing' we need to do to figure out which
+// type a given valarray uses.
+
+// The following vector of fields allows us to keep track
+  // of the spreadsheet's column order (which can help export
+  // data with the same field order that its source file used.)
+
+  std::vector<std::string> field_order{};
+
+long length = 0; // The length of each valarray.
+
+// Defining method functions that cut down on the amount of typing
+// necessary to retrieve valarrays from an MVVT_Table object:
+// s, i, d, and l stand for 'get string valarray',
+// 'get integer valarray',
+// 'get double valarray', and 'get long valarray',
+//  respectively.
+// (Commented these out because they ended up being MUCH slower
+// than an alternative approach that did not make use of method
+// functions.)
+
+// std::valarray<std::string> s(std::string field) {
+// return std::get<std::valarray<std::string>>(mvv[field]);
+// };
+
+// std::valarray<int> i(std::string field) {
+// return std::get<std::valarray<int>>(mvv[field]);
+// };
+
+// std::valarray<double> d(std::string field) {
+// return std::get<std::valarray<double>>(mvv[field]);
+// };
+
+// std::valarray<long> l(std::string field) {
+// return std::get<std::valarray<long>>(mvv[field]);
+// };
+
+
+
+};
+
+
+
 struct Import_Config {
 
 // This struct holds relevant values for importing a CSV file into
@@ -83,31 +140,6 @@ std::string csv_path);
 void print_vvs(std::vector<std::vector<std::string>> &vvs);
 
 void print_pivot_config_data(Pivot_Config& pc);
-
-
-struct MVV_Table {
-/* MVV stands for 'Map of Variant of Valarrays,' the data type 
-that we'll use to store our table data. */
-
-std::map<std::string, std::variant<std::valarray<std::string>,
-std::valarray<double>, std::valarray<long>,
-std::valarray<int>>> mvv {};
-
-std::map<std::string, std::set<std::string>> tm { {"string", {}},
-{"int", {}}, {"long", {}}, {"double", {}}};
-// tm stands for 'type map.' This attribute stores type names
-// as strings and valarray field names as values. This will help
-// reduce the amount of 'guessing' we need to do to figure out which
-// type a given valarray uses.
-
-// The following vector of fields allows us to keep track
-  // of the spreadsheet's column order (which can help export
-  // data with the same field order that its source file used.)
-
-  std::vector<std::string> field_order{};
-
-long length = 0; // The length of each valarray.
-};
 
 
 MVV_Table csv_to_mvvt(std::string file_path,

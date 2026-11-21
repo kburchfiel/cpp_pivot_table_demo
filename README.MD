@@ -63,17 +63,3 @@ the DataFrame library and Vicent La's library)
 5. Add in some equivalent Python code in order to (1) check your
 output and (2) compare speeds. (Chances are the Python code will
 be faster, given that Pandas uses Numpy under the hood)
-
-6. See if it's possible to define the [] operator for MVV_Table objects
-such that mvvt[] = mvvt.mvv[] (which would save you a few keypresses).
-
-7. Consider creating a "giva" (get integer valarray) function that
-would translate giva(mvvt, "Field") into get<iva>(mvvt.mvv["Field"]).
-This would further reduce the number of keystrokes you need to enter
-for these sorts of operations. (However, test out this approach
-to see whether this additional function would slow your program down.
-
-And consider that, if you manage to overload the [] operator for
-MVV_Table objects, you could then enter get<iva>(mvvt["Field"]) for
-this type of operation, at whicth point the giva() setup wouldn't
-be that much shorter in length.

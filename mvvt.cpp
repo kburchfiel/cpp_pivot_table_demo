@@ -40,6 +40,9 @@ using std::get; // Allows us to type 'get' rather than 'std::get' .
 
 // get<sva>() [10 characters--or around 26% of the original]
 
+// I had tried using method functions to further cut down on the amount
+// of typing required, but this resulted in MUCH slower processing,
+// so I abandoned this approach.
 
 
 
